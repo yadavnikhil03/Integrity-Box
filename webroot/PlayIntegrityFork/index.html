@@ -6,270 +6,478 @@
 <title>PlayIntegrityFork Controls</title>
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 <style>
-/*glow, blur, animations */
 :root{
-  --bg:#1f2233; --fg:#e6e6e6; --accent:#1592FF;
-  --panel-bg:#232637D9; --card-bg:#232637E6;
-  --border-radius:14px; --shadow: rgba(0,0,0,0.5);
-  --transition:0.3s;
+ --bg:#1f2233;
+ --fg:#e6e6e6;
+ --accent:#4da3ff;
+ --accent-glow:rgba(77,163,255,0.3);
+ --panel-bg:#232637cc;
+ --card-bg:#232637ee;
+ --border-radius:20px;
+ --shadow:rgba(0,0,0,0.4);
+ --transition:0.3s;
+ --success:#4dff88;
+ --danger:#ff4d4d;
+ --text2:#9aa3ff;
 }
 *{box-sizing:border-box}
 body{
-  margin:0;min-height:100vh;
-  display:flex;align-items:center;justify-content:center;
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui;
-  background:linear-gradient(135deg,#1f2233,#14172b);
-  color:var(--fg);
-  -webkit-font-smoothing:antialiased;
+ margin:0;min-height:100vh;
+ display:flex;align-items:center;justify-content:center;
+ font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",system-ui;
+ background:radial-gradient(circle at 30% 20%,#1c2045 0%,#0e1020 100%);
+ color:var(--fg);
+ -webkit-font-smoothing:antialiased;
+ padding:20px;
 }
 .card{
-  width:360px; max-width:94%;
-  background:var(--panel-bg);
-  border-radius:var(--border-radius);
-  padding:22px;
-  box-shadow:0 18px 48px var(--shadow);
-  position:relative; overflow:hidden;
-  transform: translateY(0);
-  transition: transform .35s ease, box-shadow .35s ease;
+ width:380px;max-width:100%;
+ background:var(--panel-bg);
+ backdrop-filter:blur(20px);
+ border-radius:var(--border-radius);
+ padding:28px;
+ box-shadow:0 25px 60px var(--shadow),0 0 0 1px rgba(255,255,255,0.06);
+ position:relative;overflow:hidden;
+ animation:cardEntry 0.6s cubic-bezier(0.2,0.8,0.2,1);
+}
+@keyframes cardEntry{
+ from{opacity:0;transform:translateY(30px) scale(0.96)}
+ to{opacity:1;transform:translateY(0) scale(1)}
 }
 .card::before{
-  content:"";
-  position:absolute; inset:0;
-  background:radial-gradient(circle,var(--accent) 0%, transparent 60%);
-  filter:blur(14px); opacity:.14; pointer-events:none; z-index:0;
-  animation: cardGlow 10s ease-in-out infinite;
+ content:"";
+ position:absolute;inset:0;
+ background:radial-gradient(circle at 50% 0%,var(--accent) 0%,transparent 70%);
+ filter:blur(40px);opacity:0.15;pointer-events:none;z-index:0;
+ animation:glowPulse 8s ease-in-out infinite;
 }
-@keyframes cardGlow{0%,100%{opacity:.12}50%{opacity:.28}}
-h1{position:relative;z-index:2;margin:0 0 12px 0;text-align:center;font-size:18px;color:var(--accent)}
+@keyframes glowPulse{0%,100%{opacity:0.12}50%{opacity:0.25}}
+h1{
+ position:relative;z-index:2;
+ margin:0 0 8px 0;text-align:center;
+ font-size:22px;font-weight:700;
+ color:var(--fg);
+ display:flex;align-items:center;justify-content:center;gap:10px;
+}
+.subtitle{
+ text-align:center;color:var(--text2);
+ font-size:13px;font-weight:500;margin-bottom:24px;
+ position:relative;z-index:2;
+}
 .row{
-  position:relative; z-index:2;
-  display:flex;align-items:center;justify-content:space-between;
-  gap:10px;padding:12px 6px;border-radius:10px;
-  transition:background var(--transition), transform var(--transition);
+ position:relative;z-index:2;
+ display:flex;align-items:center;justify-content:space-between;
+ gap:14px;padding:16px;border-radius:16px;
+ background:rgba(255,255,255,0.03);
+ border:1px solid rgba(255,255,255,0.06);
+ margin-bottom:10px;
+ transition:all 0.25s cubic-bezier(0.4,0,0.2,1);
+ cursor:pointer;
 }
-.row + .row { margin-top:6px; }
-.row:hover{ transform: translateY(-4px); box-shadow:0 10px 28px rgba(0,0,0,0.35); }
-
-/* switch */
-.switch{position:relative;width:56px;height:32px;flex-shrink:0}
+.row:hover{
+ background:rgba(255,255,255,0.06);
+ transform:translateY(-2px);
+ box-shadow:0 8px 24px rgba(0,0,0,0.3);
+ border-color:rgba(77,163,255,0.2);
+}
+.row:active{transform:scale(0.98)}
+.row.active{
+ background:rgba(77,163,255,0.1);
+ border-color:rgba(77,163,255,0.4);
+ box-shadow:0 0 20px rgba(77,163,255,0.15);
+}
+.row.active .icon-wrap{
+ background:var(--accent);
+ box-shadow:0 4px 16px var(--accent-glow);
+}
+.row.active .icon-wrap .material-icons{color:white}
+.row.active .title{color:var(--accent)}
+.row.active .status-dot{
+ background:var(--success);
+ box-shadow:0 0 12px var(--success);
+}
+.icon-wrap{
+ width:44px;height:44px;border-radius:12px;
+ background:rgba(255,255,255,0.08);
+ display:flex;align-items:center;justify-content:center;
+ transition:all 0.3s;flex-shrink:0;
+}
+.icon-wrap .material-icons{
+ font-size:42px;color:var(--text2);
+ transition:all 0.3s;
+}
+.content{flex:1;min-width:0}
+.title{
+ font-size:15px;font-weight:600;
+ color:var(--fg);margin-bottom:3px;
+ transition:color 0.3s;
+}
+.subtitle-text{
+ font-size:12px;color:var(--text2);
+ font-weight:500;line-height:1.3;
+}
+.status-dot{
+ width:8px;height:8px;border-radius:50%;
+ background:rgba(255,255,255,0.2);
+ transition:all 0.3s;flex-shrink:0;
+}
+.switch{
+ position:relative;width:54px;height:30px;flex-shrink:0;
+ pointer-events:none;
+}
 .switch input{position:absolute;opacity:0;width:0;height:0}
-.slider{position:absolute;inset:0;border-radius:999px;background:#2f3138;transition:background var(--transition), box-shadow var(--transition)}
-.knob{position:absolute;left:4px;top:4px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .22s cubic-bezier(.2,.9,.2,1);}
-.switch input:checked + .slider{background:var(--accent); box-shadow:0 6px 24px rgba(21,146,255,0.18)}
+.slider{
+ position:absolute;inset:0;border-radius:999px;
+ background:rgba(255,255,255,0.1);
+ transition:all var(--transition);
+ box-shadow:inset 0 2px 4px rgba(0,0,0,0.2);
+}
+.knob{
+ position:absolute;left:3px;top:3px;
+ width:24px;height:24px;border-radius:50%;
+ background:linear-gradient(145deg,#fff,#e0e0e0);
+ transition:transform 0.25s cubic-bezier(0.2,0.8,0.2,1);
+ box-shadow:0 2px 8px rgba(0,0,0,0.3);
+}
+.switch input:checked + .slider{
+ background:var(--accent);
+ box-shadow:0 0 20px var(--accent-glow);
+}
 .switch input:checked + .slider .knob{transform:translateX(24px)}
-
-/* disabled look */
-.switch input:disabled + .slider{ background: rgba(255,255,255,0.06); box-shadow:none; cursor:not-allowed; }
-.switch input:disabled + .slider .knob{ background: rgba(255,255,255,0.65); }
-
-/* inline note */
+.switch input:disabled + .slider{
+ background:rgba(255,255,255,0.05);
+ opacity:0.5;
+}
 .warning-line{
-  margin-top:12px;padding:10px;border-radius:10px;
-  background: linear-gradient(90deg, rgba(255,120,120,0.06), rgba(255,120,120,0.02));
-  color:#ffb3b3;font-weight:600;font-size:13px;text-align:center;
-  display:none;
-  box-shadow:0 6px 20px rgba(0,0,0,0.25);
+ margin:0 0 20px 0;padding:14px 16px;border-radius:14px;
+ background:linear-gradient(135deg,rgba(255,77,77,0.12),rgba(255,170,77,0.06));
+ border:1px solid rgba(255,77,77,0.2);
+ color:#ffb3b3;font-weight:600;font-size:13px;
+ display:none;align-items:center;gap:10px;
+ animation:shake 0.5s ease;
 }
-
-/* toast */
+.warning-line.show{display:flex}
+@keyframes shake{
+ 0%,100%{transform:translateX(0)}
+ 25%{transform:translateX(-5px)}
+ 75%{transform:translateX(5px)}
+}
+.warning-line .material-icons{font-size:18px;color:var(--danger)}
+.action-btn{
+ margin-top:20px;padding:16px;
+ background:rgba(77,163,255,0.1);
+ border:1px solid rgba(77,163,255,0.3);
+ border-radius:16px;
+ display:flex;align-items:center;justify-content:center;
+ gap:10px;cursor:pointer;
+ transition:all 0.25s;
+ position:relative;z-index:2;
+}
+.action-btn:hover{
+ background:rgba(77,163,255,0.2);
+ transform:translateY(-2px);
+ box-shadow:0 8px 24px rgba(77,163,255,0.2);
+}
+.action-btn:active{transform:scale(0.98)}
+.action-btn .material-icons{
+ font-size:20px;color:var(--accent);
+ animation:spin 4s linear infinite;
+ animation-play-state:paused;
+}
+.action-btn:hover .material-icons{animation-play-state:running}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.action-btn span:last-child{
+ font-size:15px;font-weight:600;color:var(--accent);
+}
+.footer{
+ margin-top:20px;text-align:center;
+ color:var(--text2);font-size:12px;opacity:0.7;
+ position:relative;z-index:2;
+}
 .toast{
-  position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);
-  background:linear-gradient(90deg,#12c48b,#0aa1ff);color:#fff;padding:10px 16px;border-radius:999px;
-  box-shadow:0 10px 30px rgba(0,0,0,0.45);opacity:0;pointer-events:none;transition:transform .36s ease,opacity .36s ease;z-index:9999;font-weight:700;
+ position:fixed;left:50%;bottom:30px;
+ transform:translateX(-50%) translateY(20px);
+ background:rgba(30,33,60,0.95);
+ backdrop-filter:blur(20px);
+ color:var(--fg);padding:14px 28px;border-radius:100px;
+ box-shadow:0 10px 40px rgba(0,0,0,0.5),0 0 0 1px rgba(255,255,255,0.1);
+ opacity:0;pointer-events:none;
+ transition:all 0.35s cubic-bezier(0.4,0,0.2,1);
+ z-index:9999;font-weight:600;font-size:15px;
+ display:flex;align-items:center;gap:10px;
 }
-.toast.show{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0);}
-
-/* helper */
-.input-label {display:flex;align-items:center;gap:8px;font-weight:700}
-.keyname {font-size:12px;color:rgba(255,255,255,0.65)}
-.footer {margin-top:14px;text-align:center;color:rgba(255,255,255,0.45);font-size:12px}
-
-/* responsive */
-@media(max-width:420px){ .card{width:92%;padding:18px} .switch{width:52px;height:30px} .switch input:checked + .slider .knob{transform:translateX(22px)} }
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast .material-icons{font-size:20px;color:var(--success)}
+@media(max-width:420px){
+ .card{width:100%;padding:22px}
+ .row{padding:14px}
+ .icon-wrap{width:40px;height:40px}
+}
 </style>
 </head>
 <body>
-  <div class="card" role="region" aria-label="Spoofing Controls">
-    <h1><span class="material-icons" style="vertical-align:middle;font-size:18px;margin-right:6px">healing</span> DroidGuard Spoofing Controls</h1>
+ <div class="card">
+   <h1><span class="material-icons">verified_user</span>Play Integrity Box</h1>
+   <div class="subtitle">Droidguard Spoofer</div>
+   
+   <div id="warningLine" class="warning-line">
+     <span class="material-icons">error_outline</span>
+     <span id="warningText"></span>
+   </div>
 
-    <div id="warningLine" class="warning-line" role="alert"></div>
+   <div id="rows">
+     <div class="row" id="row-spoofPixel" onclick="toggle('spoofPixel')">
+       <div class="icon-wrap"><span class="material-icons">shop</span></div>
+       <div class="content">
+         <div class="title">Pixelify Playstore</div>
+         <div class="subtitle-text">Pixel-exclusive properties</div>
+       </div>
+       <div class="status-dot"></div>
+       <label class="switch" onclick="event.stopPropagation()">
+         <input id="spoofPixel" type="checkbox">
+         <span class="slider"><span class="knob"></span></span>
+       </label>
+     </div>
 
-    <div id="rows" aria-live="polite">
-      <div class="row"><div class="input-label"><span class="material-icons">api</span> <div>Spoof Build ID <div class="keyname">Spoofs build ID to pixel</div></div></div>
-        <label class="switch"><input id="spoofBuild" type="checkbox"><span class="slider"><span class="knob"></span></span></label></div>
+     <div class="row" id="row-spoofVendingFinger" onclick="toggle('spoofVendingFinger')">
+       <div class="icon-wrap"><span class="material-icons">apps</span></div>
+       <div class="content">
+         <div class="title">Pixel Fingerprint</div>
+         <div class="subtitle-text">Latest canary imprint</div>
+       </div>
+       <div class="status-dot"></div>
+       <label class="switch" onclick="event.stopPropagation()">
+         <input id="spoofVendingFinger" type="checkbox">
+         <span class="slider"><span class="knob"></span></span>
+       </label>
+     </div>
 
-      <div class="row"><div class="input-label"><span class="material-icons">android</span> <div>Spoof GMS Props <div class="keyname">Spoofs pixel props </div></div></div>
-        <label class="switch"><input id="spoofProps" type="checkbox"><span class="slider"><span class="knob"></span></span></label></div>
+     <div class="row" id="row-spoofBuild" onclick="toggle('spoofBuild')">
+       <div class="icon-wrap"><span class="material-icons">api</span></div>
+       <div class="content">
+         <div class="title">Build Spoof</div>
+         <div class="subtitle-text">System build Properties</div>
+       </div>
+       <div class="status-dot"></div>
+       <label class="switch" onclick="event.stopPropagation()">
+         <input id="spoofBuild" type="checkbox">
+         <span class="slider"><span class="knob"></span></span>
+       </label>
+     </div>
 
-      <div class="row"><div class="input-label"><span class="material-icons">dynamic_form</span> <div>Spoof Attestation <div class="keyname">This will break G'Wallet</div></div></div>
-        <label class="switch"><input id="spoofProvider" type="checkbox"><span class="slider"><span class="knob"></span></span></label></div>
+     <div class="row" id="row-spoofProps" onclick="toggle('spoofProps')">
+       <div class="icon-wrap"><span class="material-icons">android</span></div>
+       <div class="content">
+         <div class="title">GMS Spoof</div>
+         <div class="subtitle-text">GMS properties</div>
+       </div>
+       <div class="status-dot"></div>
+       <label class="switch" onclick="event.stopPropagation()">
+         <input id="spoofProps" type="checkbox">
+         <span class="slider"><span class="knob"></span></span>
+       </label>
+     </div>
 
-      <div class="row"><div class="input-label"><span class="material-icons">settings</span> <div>Spoof ROM Signature <div class="keyname">Pretends ROM is OEM-signed</div></div></div>
-        <label class="switch"><input id="spoofSignature" type="checkbox"><span class="slider"><span class="knob"></span></span></label></div>
+     <div class="row" id="row-spoofProvider" onclick="toggle('spoofProvider')">
+       <div class="icon-wrap"><span class="material-icons">dynamic_form</span></div>
+       <div class="content">
+         <div class="title">Attestation API</div>
+         <div class="subtitle-text">Breaks Google Wallet</div>
+       </div>
+       <div class="status-dot"></div>
+       <label class="switch" onclick="event.stopPropagation()">
+         <input id="spoofProvider" type="checkbox">
+         <span class="slider"><span class="knob"></span></span>
+       </label>
+     </div>
 
-      <div class="row"><div class="input-label"><span class="material-icons">shop</span> <div>Spoof Playstore <div class="keyname">Injects Pixel fingerprint</div></div></div>
-        <label class="switch"><input id="spoofVendingFinger" type="checkbox"><span class="slider"><span class="knob"></span></span></label></div>
+     <div class="row" id="row-spoofSignature" onclick="toggle('spoofSignature')">
+       <div class="icon-wrap"><span class="material-icons">verified_user</span></div>
+       <div class="content">
+         <div class="title">ROM Signature</div>
+         <div class="subtitle-text">OEM-signed mask</div>
+       </div>
+       <div class="status-dot"></div>
+       <label class="switch" onclick="event.stopPropagation()">
+         <input id="spoofSignature" type="checkbox">
+         <span class="slider"><span class="knob"></span></span>
+       </label>
+     </div>
 
-      <div class="row"><div class="input-label"><span class="material-icons">key_off</span> <div>Spoof to Android 12<div class="keyname">Enable when keybox gets banned</div></div></div>
-        <label class="switch"><input id="spoofVendingSdk" type="checkbox"><span class="slider"><span class="knob"></span></span></label></div>
-    </div>
+     <div class="row" id="row-spoofVendingSdk" onclick="toggle('spoofVendingSdk')">
+       <div class="icon-wrap"><span class="material-icons">key_off</span></div>
+       <div class="content">
+         <div class="title">A10 Downgrade SDK</div>
+         <div class="subtitle-text">Use if keybox is banned</div>
+       </div>
+       <div class="status-dot"></div>
+       <label class="switch" onclick="event.stopPropagation()">
+         <input id="spoofVendingSdk" type="checkbox">
+         <span class="slider"><span class="knob"></span></span>
+       </label>
+     </div>
+   </div>
 
-    <div class="footer">IntegrityBox • 2026</div>
-  </div>
+   <div class="action-btn" onclick="restartServices()">
+     <span class="material-icons">refresh</span>
+     <span>Restart Services</span>
+   </div>
 
-  <div id="toast" class="toast" role="status" aria-live="polite">Done ✅</div>
+   <div class="footer">© IntegrityBox • 2026</div>
+ </div>
+
+ <div id="toast" class="toast">
+   <span class="material-icons">check_circle</span>
+   <span id="toastText">Saved</span>
+ </div>
 
 <script>
 const PROP_CANDIDATES = [
-  "/data/adb/modules/playintegrityfix/custom.pif.prop",
-  "/data/adb/custom.pif.prop"
+ "/data/adb/modules/playintegrityfix/custom.pif.prop",
+ "/data/adb/custom.pif.prop"
 ];
 
-const KEYS = ["spoofBuild","spoofProps","spoofProvider","spoofSignature","spoofVendingFinger","spoofVendingSdk"];
+const KEYS = ["spoofBuild","spoofProps","spoofProvider","spoofSignature","spoofVendingFinger","spoofVendingSdk","spoofPixel"];
 
-/* helper for UI */
-const toastEl = document.getElementById('toast');
-function showToast(msg, timeout=1400){
-  toastEl.textContent = msg;
-  toastEl.classList.add('show');
-  setTimeout(()=>toastEl.classList.remove('show'), timeout);
+let propFile = null;
+
+function showToast(msg){
+ document.getElementById('toastText').textContent = msg;
+ document.getElementById('toast').classList.add('show');
+ setTimeout(()=>document.getElementById('toast').classList.remove('show'), 1400);
 }
+
 function showWarning(text){
-  const w = document.getElementById('warningLine');
-  if(!text){ w.style.display='none'; w.textContent=''; return; }
-  w.style.display='block'; w.textContent = text;
+ const line = document.getElementById('warningLine');
+ if(!text){
+   line.classList.remove('show');
+   return;
+ }
+ document.getElementById('warningText').textContent = text;
+ line.classList.add('show');
 }
 
-/* execute shell and return trimmed stdout as string */
+function setDisabled(key, disabled){
+ const input = document.getElementById(key);
+ const row = document.getElementById('row-'+key);
+ if(input) input.disabled = disabled;
+ if(row){
+   row.style.opacity = disabled ? '0.4' : '1';
+   row.style.pointerEvents = disabled ? 'none' : 'auto';
+ }
+}
+
+function updateVisuals(key, isActive){
+ document.getElementById('row-'+key).classList.toggle('active', isActive);
+ document.getElementById(key).checked = isActive;
+}
+
+async function toggle(key){
+ if(!propFile){
+   showWarning("Tap module action button first");
+   return;
+ }
+ const input = document.getElementById(key);
+ if(input.disabled) return;
+ 
+ const newVal = input.checked ? '0' : '1';
+ input.checked = !input.checked;
+ 
+ await writeKey(propFile, key, newVal);
+ await restartGMS();
+ 
+ updateVisuals(key, newVal === '1');
+ showToast(newVal === '1' ? 'Enabled' : 'Disabled');
+}
+
 async function sh(cmd){
-  try{
-    if(typeof ksu?.exec === 'function'){
-      const maybe = ksu.exec(cmd);
-      if(maybe && typeof maybe.then === 'function') return (await maybe).toString().trim();
-      if(typeof maybe === 'string') return maybe.toString().trim();
-      return await new Promise((resolve, reject) => {
-        const cb = `cb_${Date.now()}_${Math.random()*10000|0}`;
-        window[cb] = (code, stdout, stderr) => {
-          try{ delete window[cb]; }catch(e){}
-          if(code === 0) resolve((stdout||'').toString().trim());
-          else resolve(((stdout||'') + (stderr||'')).toString().trim());
-        };
-        try{
-          ksu.exec(cmd, "{}", cb);
-        }catch(e){
-          resolve('');
-        }
-      });
-    } else {
-      return '';
-    }
-  }catch(e){
-    return '';
-  }
+ try{
+   if(typeof ksu?.exec === 'function'){
+     const maybe = ksu.exec(cmd);
+     if(maybe && typeof maybe.then === 'function') return (await maybe).toString().trim();
+     if(typeof maybe === 'string') return maybe.toString().trim();
+     return await new Promise((resolve) => {
+       const cb = `cb_${Date.now()}_${Math.random()*10000|0}`;
+       window[cb] = (code, stdout, stderr) => {
+         delete window[cb];
+         resolve(code === 0 ? (stdout||'').toString().trim() : ((stdout||'')+(stderr||'')).toString().trim());
+       };
+       ksu.exec(cmd, "{}", cb);
+     });
+   }
+   return '';
+ }catch(e){return ''}
 }
 
-/* find the first existing prop file */
 async function findPropFile(){
-  for(const p of PROP_CANDIDATES){
-    const out = await sh(`sh -c 'if [ -f "${p}" ]; then echo found; else echo missing; fi'`);
-    if(out.trim() === 'found') return p;
-  }
-  return null;
+ for(const p of PROP_CANDIDATES){
+   const out = await sh(`sh -c 'if [ -f "${p}" ]; then echo found; else echo missing; fi'`);
+   if(out.trim() === 'found') return p;
+ }
+ return null;
 }
 
-/* check advanced settings presence */
 async function hasAdvancedSettings(file){
-  if(!file) return false;
-  const out = await sh(`sh -c 'grep -q \"^spoofProvider=\" \"${file}\" && echo 1 || echo 0'`);
-  return out.trim() === '1';
+ if(!file) return false;
+ const out = await sh(`sh -c 'grep -q "^spoofProvider=" "${file}" && echo 1 || echo 0'`);
+ return out.trim() === '1';
 }
 
-/* read key value */
 async function readKey(file, key){
-  if(!file) return '';
-  const cmd = `sh -c 'grep -m1 \"^${key}=\" \"${file}\" | cut -d\"=\" -f2- || echo \"\"'`;
-  const out = await sh(cmd);
-  return (out ?? '').toString().trim();
+ if(!file) return '';
+ const cmd = `sh -c 'grep -m1 "^${key}=" "${file}" | cut -d"=" -f2- || echo ""'`;
+ const out = await sh(cmd);
+ return (out ?? '').toString().trim();
 }
 
-/* write key value: if exists replace, else append */
 async function writeKey(file, key, value){
-  if(!file) return false;
-  const cmd = `sh -c 'if grep -q \"^${key}=\" \"${file}\"; then sed -i \"s/^${key}=.*/${key}=${value}/\" \"${file}\"; else printf \"\\n${key}=${value}\\n\" >> \"${file}\"; fi'`;
-  await sh(cmd);
-  return true;
+ if(!file) return false;
+ const cmd = `sh -c 'if grep -q "^${key}=" "${file}"; then sed -i "s/^${key}=.*/${key}=${value}/" "${file}"; else printf "\\n${key}=${value}\\n" >> "${file}"; fi'`;
+ await sh(cmd);
+ return true;
 }
 
-/* restart GMS */
 async function restartGMS(){
-  await sh(`sh -c 'am force-stop com.google.android.gms.unstable 2>/dev/null || true; am force-stop com.android.vending 2>/dev/null || true'`);
+ await sh(`sh -c 'am force-stop com.google.android.gms.unstable 2>/dev/null || true; am force-stop com.android.vending 2>/dev/null || true'`);
 }
 
-/* set toggles from file */
+async function restartServices(){
+ await restartGMS();
+ showToast('Services restarted');
+}
+
 async function init(){
-  const file = await findPropFile();
-  if(!file){
-    showWarning("⚠️ Fingerprint not found. Kindly click on PlayIntegrityFork module's action button");
-    // disable all toggles visually
-    KEYS.forEach(k => {
-      const el = document.getElementById(k);
-      if(el) { el.disabled = true; el.checked = false; }
-    });
-    return;
-  }
+ propFile = await findPropFile();
+ 
+ if(!propFile){
+   showWarning("Tap module action button first");
+   KEYS.forEach(k => setDisabled(k, true));
+   return;
+ }
 
-  const adv = await hasAdvancedSettings(file);
-  if(!adv){
-    showWarning("⚠️ Advanced Settings not detected. Enable PIF Advanced toggle & click on action button");
-    KEYS.forEach(k => {
-      const el = document.getElementById(k);
-      if(el) { el.disabled = true; el.checked = false; }
-      const parent = document.getElementById(k)?.closest('.row');
-      if(parent) parent.title = "Advanced Settings missing, 'spoofProvider is unavailable";
-    });
-    return;
-  }
+ const adv = await hasAdvancedSettings(propFile);
+ if(!adv){
+   showWarning("Enable PIF Advanced toggle first");
+   KEYS.forEach(k => setDisabled(k, true));
+   return;
+ }
 
-  // Hide warning if advanced settings exist
-  showWarning('');
+ showWarning('');
 
-  // For each key, read its value and set toggle
-  for (const key of KEYS) {
-    const el = document.getElementById(key);
-    if (!el) continue;
-
-    el.disabled = false;
-
-    const val = await readKey(file, key);
-    // treat only "1" as enabled
-    el.checked = (val === '1');
-
-    el.addEventListener('change', async () => {
-      el.parentElement.animate(
-        [
-          { transform: 'scale(1)' },
-          { transform: 'scale(1.03)' },
-          { transform: 'scale(1)' }
-        ],
-        { duration: 240, easing: 'ease' }
-      );
-
-      const newVal = el.checked ? '1' : '0';
-
-      await writeKey(file, key, newVal);
-      await restartGMS();
-
-      try {
-        localStorage.setItem(`toggle_${key}`, newVal);
-      } catch (e) {}
-
-      showToast('Done ✅');
-    }, { passive: true });
-  }
+ for(const key of KEYS){
+   const val = await readKey(propFile, key);
+   updateVisuals(key, val === '1');
+ }
+ 
+ KEYS.forEach(key => {
+   const input = document.getElementById(key);
+   input.addEventListener('change', () => toggle(key));
+ });
 }
 
-/* DOM loaded */
-document.addEventListener('DOMContentLoaded', ()=>{ init().catch(e=>{ console.error(e); showWarning("⚠️ Initialization Failed check KSU is available."); }) });
+document.addEventListener('DOMContentLoaded', () => {
+ init().catch(() => showWarning("Check KSU availability"));
+});
 </script>
 </body>
 </html>
