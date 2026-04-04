@@ -793,8 +793,8 @@ execute_if_needed() {
     if [ -f "$TARGET_FILE" ]; then
         line_count=$(wc -l < "$TARGET_FILE")
         log "Target.txt has $line_count packages"
-        if [ "$line_count" -gt 50 ]; then
-            log "Line count exceeds 50, executing cleanup script"
+        if [ "$line_count" -gt 150 ]; then
+            log "Line count exceeds 150, executing cleanup script"
             if [ -f "$SCRIPT" ]; then
                 sh "$SCRIPT"
                 log "Script executed with exit code $?"
@@ -809,6 +809,13 @@ execute_if_needed() {
 
 # Initial check
 log "••• Service started •••"
+
+# Exit if module is disabled 
+if [ -f "/data/adb/modules/playintegrityfix/disable" ]; then
+    log "Integrity Box is disabled, exiting..."
+    exit 0
+fi
+
 execute_if_needed
 
 # Monitor in background
@@ -840,7 +847,7 @@ note() {
     printf "%s | %s\n" "$TS" "$1" >> "$LOG_DIR/Lineage.log"
 }
 
-# Abort the script & delete flags web safe mode is active 
+# Abort the script & delete flags wen safe mode is active 
 if [ -f "/data/adb/Box-Brain/safemode" ]; then
     note "$(date '+%Y-%m-%d %H:%M:%S') : Safemode active, script aborted." >> "/data/adb/Box-Brain/Integrity-Box-Logs/safemode.log"
     rm -rf "/data/adb/Box-Brain/NoLineageProp"
@@ -849,8 +856,9 @@ if [ -f "/data/adb/Box-Brain/safemode" ]; then
     exit 1
 fi
 
+# Exit if module is disabled 
 if [ -f "/data/adb/modules/playintegrityfix/disable" ]; then
-    rm -rf "/data/adb/modules/playintegrityfix/system.prop"
+    note "Integrity Box is disabled, exiting..."
     exit 0
 fi
 
@@ -971,10 +979,10 @@ log() {
   echo "$(date '+%Y-%m-%d %H:%M:%S') | $1" >> "$LOG_FILE"
 }
 
-# Stop when safe mode is enabled 
-if [ -f "/data/adb/Box-Brain/safemode" ]; then
-    log " Permission denied by Safe Mode"
-    exit 1
+# Exit if module is disabled 
+if [ -f "/data/adb/modules/playintegrityfix/disable" ]; then
+    log "Integrity Box is disabled, exiting..."
+    exit 0
 fi
 
 log " "
@@ -1097,6 +1105,12 @@ setprop_safe() {
 # START LOG
 writelog "•••••• Starting Security Patch Override ••••••"
 
+# Exit if module is disabled 
+if [ -f "/data/adb/modules/playintegrityfix/disable" ]; then
+    writelog "Integrity Box is disabled, exiting..."
+    exit 0
+fi
+
 # SAVE PATCH DATE
 mkdir -p "/data/adb/tricky_store"
 echo "all=$PATCH_DATE" > "$FILE_PATH" 2>>"$LOG_FILE"
@@ -1136,10 +1150,10 @@ if [ ! -f "/data/adb/modules/zygisk_shamiko/module.prop" ]; then
    cat <<'EOF' > "$boot/shamiko.sh"
 #!/system/bin/sh
 
-# Stop when safe mode is enabled 
-if [ -f "/data/adb/Box-Brain/safemode" ]; then
-    echo " Permission denied by Safe Mode"
-    exit 1
+# Exit if module is disabled 
+if [ -f "/data/adb/modules/playintegrityfix/disable" ]; then
+    echo "Integrity Box is disabled, exiting..."
+    exit 0
 fi
 
 check_reset_prop() {
