@@ -53,7 +53,7 @@ SUM_KA="c9bbc118c75b11bfca7d99b67470d68b5505e1959b6a5f0b298b38ba8104c93a"
 URL_UL="https://github.com/Xposed-Modules-Repo/ru.mike.updatelocker/releases/download/19-1.4.2/updatelocker_v1.4.2_icon.apk"
 SUM_UL="7e157f7847e4ac1e7a2262f9865740f405c3a6346108d08dec835f3e7cae12ee"
 URL_HMA="https://raw.githubusercontent.com/MeowDump/Integrity-Box/refs/heads/main/hidemyapplist/config.json"
-SUM_HMA="8cbdab788ef483076095952abf6d254b6cb0f9b4fdff6204ef954ff3a31d8992"
+SUM_HMA="0f61928c7d1a6b14e945fdd6a55b6fca3caade1ed9055f7479f725f905f8e0e9"
 URL_HMA2="https://github.com/frknkrc44/HMA-OSS/releases/download/oss-158/HMA-OSS-oss-158-release.apk"
 SUM_HMA2="afa03331a9e572ede6bdffb7eac873653b576cda81057e4f2d6152023b91085c"
 URL_RP="https://github.com/uragiristereo/Reverse_Pixelify/releases/download/v1.0/Reverse_Pixelify_v1.0.apk"
@@ -532,8 +532,9 @@ sh "$SCRIPT_DIR/cleanup.sh" >/dev/null 2>&1;
 
 # TSA Farewell || Disable auto target update of outdated module 
 if [ -f "/data/adb/modules/tsupport-advance/service.sh" ]; then
-    mkdir -p "/sdcard/TSupportConfig"
+	mkdir -p "/sdcard/TSupportConfig"
     touch "/sdcard/TSupportConfig/stop-tspa-auto-target"
+    log_step "DISABLE" "TSA Auto target"
 fi
 echo " "
 echo " "
