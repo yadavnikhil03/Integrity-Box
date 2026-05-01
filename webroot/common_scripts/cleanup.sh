@@ -2,7 +2,7 @@
 F="/data/adb/tricky_store/keybox.xml"
 T="/data/adb/tricky_store/keybox.xml.tmp"
 L="/data/adb/Box-Brain/Integrity-Box-Logs/remove.log"
-X="dowhat,youlove,lovewhat,youdo"
+X="morning,evening,night,fight"
 
 log() {
     echo "- $1" >> "$L"
@@ -58,9 +58,10 @@ mv "$T" "$F"
     delete_if_exist /data/adb/integrity_box_verify
 	delete_if_exist /data/adb/modules_update/playintegrityfix/verify.sh
 	delete_if_exist /data/adb/Integrity-Box-Logs
+	delete_if_exist /data/adb/service.d/shamiko.sh
 	delete_if_exist /data/adb/modules_update/playintegrityfix/hash
 	delete_if_exist /data/adb/modules_update/playintegrityfix/credits.md
-	delete_if_exist /data/adb/service.d/debug.sh
+	delete_if_exist /data/adb/modules_update/playintegrityfix/CHANGELOG.md
 	delete_if_exist /data/adb/Box-Brain/Integrity-Box-Logs/description.sh
 	delete_if_exist /data/adb/modules/playintegrityfix/tmp.pro
 	delete_if_exist /data/adb/modules/playintegrityfix/custom.pif.json
@@ -72,6 +73,7 @@ mv "$T" "$F"
 	delete_if_exist /data/adb/modules/playintegrityfix/PIXEL_VERSIONS_HTML
 	delete_if_exist /data/adb/modules/playintegrityfix/PIXEL_ZIP_METADATA
 	delete_if_exist /data/adb/modules/playintegrityfix/osm0sis
+	delete_if_exist /data/adb/modules/playintegrityfix/CHANGELOG.md
 	delete_if_exist /data/adb/pif.prop
 	delete_if_exist /data/adb/pif.json
 	delete_if_exist /data/local/tmp/keybox_scan.log
