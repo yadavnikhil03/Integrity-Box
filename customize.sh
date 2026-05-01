@@ -7,8 +7,10 @@ INSTALL_LOG="$LOG_DIR/Installation.log"
 SCRIPT="$MODPATH/webroot/common_scripts"
 MEOW="/data/adb/modules/playintegrityfix"
 SRC="/data/adb/modules_update/playintegrityfix/module.prop"
+SDK=$(getprop ro.system.build.version.sdk)
 DEST="$MEOW/module.prop"
 FLAG="/data/adb/Box-Brain"
+TIMEOUT=15
 
 # Create log directory if it doesn't exist
 mkdir -p "$LOG_DIR" || true
@@ -41,6 +43,25 @@ check_integrity() {
     fi
 }
 
+rom_type() {
+    # use getprop grep
+    if getprop | grep -iq "lineage"; then
+        return 0
+    fi
+    
+    # read system build.prop
+    if [ -f /system/build.prop ] && grep -iq "lineage" /system/build.prop; then
+        return 0
+    fi
+    
+    # read vendor build.prop
+    if [ -f /vendor/build.prop ] && grep -iq "lineage" /vendor/build.prop; then
+        return 0
+    fi
+    
+    return 1
+}
+
 # Setup environment and permissions
 setup_environment() {
     debug " ✦ Setting up Environment "
@@ -56,7 +77,7 @@ hizru() {
 
     mkdir -p "$FLAG" "$LOG_DIR"
 
-    PKGS="com.samsung.android.app.updatecenter com.samsung.android.biometrics.app.setting com.samsung.android.game.gos com.oplus.ota com.oplus.romupdate"
+    PKGS="com.samsung.android.app.updatecenter com.samsung.android.biometrics.app.setting com.samsung.android.game.gos com.sec.android.soagent com.xiaomi.account com.wssyncmldm com.oplus.ota com.xiaomi.misettings com.oplus.romupdate"
     FOUND=0
     TS="$(date '+%Y-%m-%d %H:%M:%S')"
 
@@ -141,7 +162,7 @@ release_source() {
 # Enable recommended settings
 enable_recommended_settings() {
     debug " ✦ Enabling Recommended Settings "
-    touch "$FLAG/NoLineageProp"
+    touch "$FLAG/iframe_back_button"
     touch "$FLAG/migrate_force"
     touch "$FLAG/run_migrate"
     touch "$FLAG/noredirect"
@@ -155,11 +176,12 @@ enable_recommended_settings() {
 # Final footer message
 display_footer() {
     debug "_________________________________________"
-    debug
+    debug " "
     debug "             Installation Completed "
     debug "    This module was released by 𝗠𝗘𝗢𝗪 𝗗𝗨𝗠𝗣"
-    debug
-    debug
+    debug " "
+    debug " "
+    debug " "
 }
 
 # Main installation flow
@@ -221,12 +243,90 @@ if [ ! -f "/data/adb/modules/playintegrityfix/service.sh" ]; then
     fi
 fi
 
+# Detect ROM
+if rom_type; then
+    debug " ✦ ROM type: CUSTOM ROM"
+else
+    debug " ✦ ROM type: STOCK ROM"
+    touch "$FLAG/safemode"
+fi
+
 # Write security patch file if missing 
 if [ ! -f /data/adb/tricky_store/security_patch.txt ]; then
 cat <<EOF > /data/adb/tricky_store/security_patch.txt
-all=2026-04-01
+all=2026-05-01
 EOF
 fi
+
+# Let bro decide whether he wants to break his OTA or not 
+get_key() {
+    local key=""
+    local tmpfile=/tmp/.getevent_$$
+
+    # Start getevent in background
+    ( timeout $TIMEOUT getevent -lqc 1 2>/dev/null > "$tmpfile" ) &
+    local pid=$!
+
+    # Wait for process to complete or timeout
+    wait $pid 2>/dev/null
+
+    # Check what we got
+    if [ -f "$tmpfile" ]; then
+        local event=$(grep -E "KEY_(VOLUME|POWER)" "$tmpfile" | grep "DOWN" | awk '{print $(NF-1)}')
+        case "$event" in
+            *VOLUMEUP*) key="UP" ;;
+            *VOLUMEDOWN*) key="DOWN" ;;
+            *POWER*) key="POWER" ;;
+        esac
+        rm -f "$tmpfile"
+    fi
+
+    if [ -z "$key" ]; then
+        key="TIMEOUT"
+        # Kill any leftover getevent
+        killall -9 getevent 2>/dev/null
+    fi
+
+    echo "$key"
+}
+
+detect_lineage_official() {
+    if [ -n "$(getprop ro.lineage.device)" ]; then
+        echo "   "
+        echo "   LineageOS detected!"
+        echo "   "
+        echo "   𝙎𝙥𝙤𝙤𝙛 𝙘𝙪𝙨𝙩𝙤𝙢 𝙍𝙊𝙈 𝙙𝙚𝙩𝙚𝙘𝙩𝙞𝙤𝙣 𝙥𝙧𝙤𝙥𝙨?"
+        echo "   {𝗧𝗵𝗶𝘀 𝘄𝗶𝗹𝗹 𝗯𝗿𝗲𝗮𝗸 𝗟𝗶𝗻𝗲𝗮𝗴𝗲𝗢𝗦 𝗢𝗧𝗔 𝘂𝗽𝗱𝗮𝘁𝗲𝗿}"
+        echo "   "
+        echo "   Volume UP / Touch  = YES (spoof props) [default]"
+        echo "   Volume DOWN = NO (keep ROM OTA working)"
+        echo "   Timeout: ${TIMEOUT}s"
+        echo "   "
+
+        local key=$(get_key)
+
+        case "$key" in
+            DOWN)
+                echo "   Keeping OTA updater intact."
+                rm -f "/data/adb/modules/playintegrityfix/system.prop"
+                rm -f "$FLAG/NoLineageProp"
+                rm -rf "$FLAG/override"
+                rm -rf "$FLAG/ota"
+                touch "$FLAG/safemode"
+                touch "$FLAG/lineageuser"
+                ;;
+            *)
+                echo "   Spoofing props enabled. OTA updater disabled."
+                rm -f "$FLAG/safemode"
+                rm -f "$FLAG/ota"
+                touch "$FLAG/override"
+                touch "$FLAG/NoLineageProp"
+                ;;
+        esac
+    fi
+}
+
+[ ! -f "$FLAG/lineageuser" ] && detect_lineage_official
 
 ##########################################
 # adapted from Play Integrity Fork by @osm0sis
@@ -279,6 +379,17 @@ rm -f /data/data/com.google.android.gms/cache/pif.prop /data/data/com.google.and
 
 # Remove flag from /sdcard to avoid detection 
 [ -f /sdcard/zygisk ] || [ -d /sdcard/zygisk ] && rm -rf /sdcard/zygisk
+
+# Hide Action & WebUI after update to enforce reboot.
+# Some users flash (update) the module, skip rebooting, and still expect it to work.
+# Then they report "bugs" that were already fixed in newer releases,
+# while insisting they're on the latest version.
+# If you didn't reboot, you're not actually running the update. 🙂
+if [ -f "$MEOW/action.sh" ] && [ -d "$MEOW/webroot" ]; then
+    mv "$MEOW/action.sh" "$MEOW/action.sh.bak"
+    mv "$MEOW/webroot" "$MEOW/webui"
+    sed -i 's/^description=.*/description=> 𝚁𝚎𝚋𝚘𝚘𝚝 𝚢𝚘𝚞𝚛 𝚙𝚑𝚘𝚗𝚎 𝚝𝚘 𝚞𝚜𝚎 𝚖𝚎 🪷🦢/' "$MEOW/module.prop"
+fi
 
 display_footer
 exit 0
