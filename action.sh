@@ -29,7 +29,7 @@ PATCH_FLAG="$BOX/patch"
 P="$MODPATH/custom.pif.prop"
 SKIP_FILE="/data/adb/Box-Brain/skip"
 
-PATCH_DATE="2026-03-01"
+PATCH_DATE="2026-05-01"
 PROP_MAIN="ro.build.version.security_patch"
 
 TARGET_DIR="/data/adb/tricky_store"
@@ -38,8 +38,8 @@ FILE_PATH="$TARGET_DIR/security_patch.txt"
 DIR="/sdcard/Download"
 OUTJSON="/sdcard/meow.json"
 
-URL_ZN="https://github.com/Dr-TSNG/ZygiskNext/releases/download/v1.3.3/Zygisk-Next-1.3.3-731-1193e46-release.zip"
-SUM_ZN="a528584874dd814423dece1a6bc734aee524886d74f4453f48af0715a7f0f5c4"
+URL_ZN="https://github.com/Dr-TSNG/ZygiskNext/releases/download/v1.3.4/Zygisk-Next-1.3.4-746-d1b76b3-release.zip"
+SUM_ZN="b330b368e6133b83c069c0ff1bb1bf81091afec5a8d6532d39c14bd1b7e5d367"
 URL_CP="https://github.com/LSPosed/CorePatch/releases/download/4.8/app-release.apk"
 SUM_CP="61db1976f9e47f28700825942cfed0a373cbed9ac0d4006faefd21de34e19fef"
 URL_TH="https://github.com/trinadhthatakula/Thor/releases/download/v1.71.7/foss-release.apk"
@@ -53,9 +53,9 @@ SUM_KA="c9bbc118c75b11bfca7d99b67470d68b5505e1959b6a5f0b298b38ba8104c93a"
 URL_UL="https://github.com/Xposed-Modules-Repo/ru.mike.updatelocker/releases/download/19-1.4.2/updatelocker_v1.4.2_icon.apk"
 SUM_UL="7e157f7847e4ac1e7a2262f9865740f405c3a6346108d08dec835f3e7cae12ee"
 URL_HMA="https://raw.githubusercontent.com/MeowDump/Integrity-Box/refs/heads/main/hidemyapplist/config.json"
-SUM_HMA="0f61928c7d1a6b14e945fdd6a55b6fca3caade1ed9055f7479f725f905f8e0e9"
-URL_HMA2="https://github.com/frknkrc44/HMA-OSS/releases/download/oss-158/HMA-OSS-oss-158-release.apk"
-SUM_HMA2="afa03331a9e572ede6bdffb7eac873653b576cda81057e4f2d6152023b91085c"
+SUM_HMA="bf7e449d96fcd2467c2568ba184f67ee53211f3e5437afdb91116cf24adb4c71"
+URL_HMA2="https://github.com/frknkrc44/HMA-OSS/releases/download/oss-161/HMA-OSS-oss-161-release.apk"
+SUM_HMA2="059f9fa4a2ccdef83f281d9434c852d29a0728d5e0e4e0f1e13d96fade6947cd"
 URL_RP="https://github.com/uragiristereo/Reverse_Pixelify/releases/download/v1.0/Reverse_Pixelify_v1.0.apk"
 SUM_RP="d7c69f958bfdec13f8d3ded5cf34705cf3743645aad713813f463aefab9d971a"
 URL_KW="https://github.com/5ec1cff/KsuWebUIStandalone/releases/download/v1.0/KsuWebUI-1.0-34-release.apk"
@@ -141,10 +141,10 @@ if [ -f $BOX/download ]; then
         print_row "Thor Installer" "$(get_size "$OUT/Installation_Spoofer.apk")" "Verified" ||
         print_row "Thor Installer" "-" "Failed"
         
-    download "$URL_AF" "Android_Faker.apk" "$SUM_AF"
-    [ -f "$OUT/Android_Faker.apk" ] &&
-        print_row "Android Faker" "$(get_size "$OUT/Android_Faker.apk")" "Verified" ||
-        print_row "Android Faker" "-" "Failed"
+#    download "$URL_AF" "Android_Faker.apk" "$SUM_AF"
+#    [ -f "$OUT/Android_Faker.apk" ] &&
+#        print_row "Android Faker" "$(get_size "$OUT/Android_Faker.apk")" "Verified" ||
+#        print_row "Android Faker" "-" "Failed"
 
     printf "%${WIDTH}s\n" | tr ' ' '='
     center "DONE"
@@ -307,7 +307,6 @@ echo " "
 mkdir -p "$(dirname "$CPP")" 2>/dev/null || true
 touch "$CPP" 2>/dev/null || true
 
-
 # Mode
 ARGDESC=""
 ARGS=""
@@ -370,7 +369,7 @@ fi
 if [ -f "$BOX/run_migrate" ]; then
     if sh "$MODPATH/migrate.sh" $MARGS "$INPUT_PROP" >>"$CPP" 2>&1; then
         MIGRATE_OK=1
-        log_step "MIGRATE" "Fingerprint File processed"
+        log_step "MIGRATE" "Pixel RAW Fingerprint"
     else
         log_step "WARNING" "migrate.sh failed ($MDESC)"
     fi
@@ -415,16 +414,14 @@ if [ "$MIGRATE_OK" -eq 1 ] && [ -f "$BOX/json" ] && [ ! -f "$BOX/skip_json" ] &&
         echo "  }"
         echo "}"
     } > "$OUTJSON"
-    log_step "CREATED" "JSON exported to $OUTJSON"
+    log_step "CREATED" "Dumped PIF config to $OUTJSON"
 else
-    log_step "SKIPPED" "JSON export"
+    log_step "SKIPPED" "PIF config dump"
 fi
 
 
 # Blacklist
 mkdir -p "$TARGET_DIR" 2>/dev/null
-#log_step "CREATED" "Tricky Store folder"
-
 TARGET="$TARGET_DIR/target.txt"
 BACKUP="$TARGET.bak"
 TMP="${TARGET}.new.$$"
@@ -436,7 +433,7 @@ if [ ! -f "$SKIP_FILE" ] && [ "$orig_selinux" = "Enforcing" ]; then
     setenforce 0
 fi
 
-[ -f "$TARGET" ] && mv -f "$TARGET" "$BACKUP" && made_backup=1 && log_step "ARCHIVE" "Target List"
+[ -f "$TARGET" ] && mv -f "$TARGET" "$BACKUP" && made_backup=1 && log_step "PERFORM" "Targets Backup"
 
 teeBroken="false"
 TEE_STATUS="$TARGET_DIR/tee_status"
@@ -459,14 +456,14 @@ if [ -s "$BLACKLIST" ]; then
     sed -i 's/^[[:space:]]*//;s/[[:space:]]*$//' "$BLACKLIST"
     grep -Fvxf "$BLACKLIST" "$TMP" > "${TMP}.filtered" || true
     mv -f "${TMP}.filtered" "$TMP"
-    log_step "CLEANED" "Blacklisted Apps"
+    log_step "MIGRATE" "Blacklisted Targets"
 else
     log_step "SKIPPED" "Blacklist not configured"
 fi
 
 [ "$teeBroken" = "true" ] && sed -i 's/$/!/' "$TMP" && log_step "SUPPORT" "TEE Broken Device"
 
-mv -f "$TMP" "$TARGET" && success=1 && log_step "UPDATED" "Target Packages"
+mv -f "$TMP" "$TARGET" && success=1 && log_step "UPDATED" "Target Packages config"
 
 if [ ! -f "$SKIP_FILE" ] && [ "$orig_selinux" = "Enforcing" ]; then
     setenforce 1
@@ -492,7 +489,7 @@ if [ -f "$PATCH_FLAG" ]; then
 
 else
   echo "all=$PATCH_DATE" > "$FILE_PATH" 2>>"$PATCH_LOG"
-  log_step "SPOOFED" "Security Patch to $PATCH_DATE"
+  log_step "SPOOFED" "Tricky Patch to $PATCH_DATE"
 
   CURRENT_PROP="$(getprop "$PROP_MAIN" | tr -d ' \t\r\n')"
   log_patch "Current $PROP_MAIN: $CURRENT_PROP"
@@ -514,7 +511,7 @@ else
         log_step "FAILED" "resetprop not found"
       fi
     else
-      log_step "SKIPPED" "Patch Spoofing not Required"
+      log_step "MASKING" "System & Vendor patch not required"
     fi
   fi
 fi
@@ -526,18 +523,18 @@ for proc in com.google.android.gms.unstable com.google.android.gms com.android.v
   kill_process "$proc"
 done
 
-log_step "STOPPED" "Droidguard Processes"
+log_step "RESTART" "Google Service Processes"
 
 sh "$SCRIPT_DIR/cleanup.sh" >/dev/null 2>&1; 
 
 # TSA Farewell || Disable auto target update of outdated module 
 if [ -f "/data/adb/modules/tsupport-advance/service.sh" ]; then
-	mkdir -p "/sdcard/TSupportConfig"
+    mkdir -p "/sdcard/TSupportConfig"
     touch "/sdcard/TSupportConfig/stop-tspa-auto-target"
-    log_step "DISABLE" "TSA Auto target"
 fi
 echo " "
 echo " "
 echo "    ACTION COMPLETED SUCCESSFULLY"
+randomize_banner
 handle_delay
 exit 0
