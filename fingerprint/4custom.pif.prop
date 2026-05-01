@@ -1,21 +1,21 @@
 # Build Fields
 MANUFACTURER=Google
-MODEL=Pixel Fold
-FINGERPRINT=google/felix_beta/felix:CANARY/ZP11.260220.007/14993212:user/release-keys
+MODEL=Pixel 8
+FINGERPRINT=google/shiba_beta/shiba:CANARY/ZP11.260320.007/15154667:user/release-keys
 BRAND=google
-PRODUCT=felix_beta
-DEVICE=felix
+PRODUCT=shiba_beta
+DEVICE=shiba
 RELEASE=CANARY
-ID=ZP11.260220.007
-INCREMENTAL=14993212
+ID=ZP11.260320.007
+INCREMENTAL=15154667
 TYPE=user
 TAGS=release-keys
-SECURITY_PATCH=2026-03-01
+SECURITY_PATCH=2026-04-01
 DEVICE_INITIAL_SDK_INT=32
 
 # System Properties
-*.build.id=ZP11.260220.007
-*.security_patch=2026-03-01
+*.build.id=ZP11.260320.007
+*.security_patch=2026-04-01
 *api_level=32
 
 # Advanced Settings
@@ -27,5 +27,5 @@ spoofVendingFinger=1
 spoofVendingSdk=0
 spoofPixel=1
  
-# Released On: 2026-03-19
-# Estimated Expiry: 2026-04-30
+# Released On: 2026-04-14
+# Estimated Expiry: 2026-05-26
