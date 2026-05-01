@@ -3,18 +3,13 @@ MODPATH="${0%/*}"
 . $MODPATH/common_func.sh
 
 boot="/data/adb/service.d"
-placeholder="/data/adb/modules/playintegrityfix/webroot/common_scripts"
+placeholder="$MODPATH/webroot/common_scripts"
 mkdir -p "/data/adb/Box-Brain/Integrity-Box-Logs"
 mkdir -p "$boot"
 
 # Grant perms 
 if [ -f "$placeholder/autopilot.sh" ]; then
     chmod 755 "$placeholder/autopilot.sh"
-fi
-
-# Remove installation script if exists 
-if [ -f "/data/adb/modules/playintegrityfix/customize.sh" ]; then
-  rm -rf "/data/adb/modules/playintegrityfix/customize.sh"
 fi
 
 # Handle Vending-specific prop
@@ -40,377 +35,6 @@ if [ -f "/data/adb/Box-Brain/disablegms" ]; then
     set_simpleprop persist.sys.pihooks.disable 1
     set_simpleprop persist.sys.kihooks.disable 1
 fi
-
-if [ ! -f "$placeholder/target.sh" ]; then
-  cat <<'EOF' > "$placeholder/target.sh"
-#!/system/bin/sh
-MODPATH="/data/adb/modules/playintegrityfix"
-. $MODPATH/common_func.sh
-
-TARGET_DIR="/data/adb/tricky_store"
-TARGET="$TARGET_DIR/target.txt"
-BACKUP="$TARGET.bak"
-TMP="${TARGET}.new.$$"
-success=0
-made_backup=0
-orig_selinux="$(getenforce 2>/dev/null || echo Permissive)"
-
-mkdir -p "$TARGET_DIR" 2>/dev/null
-if [ ! -f "$SKIP_FILE" ] && [ "$orig_selinux" = "Enforcing" ]; then
-    setenforce 0
-fi
-
-[ -f "$TARGET" ] && mv -f "$TARGET" "$BACKUP" && made_backup=1 && log_step "BACKUP" "$BACKUP"
-
-teeBroken="false"
-TEE_STATUS="$TARGET_DIR/tee_status"
-[ -f "$TEE_STATUS" ] && [ "$(grep -E '^teeBroken=' "$TEE_STATUS" | cut -d '=' -f2)" = "true" ] && teeBroken="true"
-
-for pkg in com.android.vending com.google.android.gms com.google.android.gsf; do
-    echo "$pkg" >> "$TMP"
-done
-
-cmd package list packages -3 2>/dev/null | cut -d ":" -f2 | while read -r pkg; do
-    [ -z "$pkg" ] && continue
-    grep -Fxq "$pkg" "$TMP" || echo "$pkg" >> "$TMP"
-done
-
-sed -i 's/^[[:space:]]*//;s/[[:space:]]*$//' "$TMP"
-sort -u "$TMP" -o "$TMP"
-
-BLACKLIST="/data/adb/Box-Brain/blacklist.txt"
-if [ -s "$BLACKLIST" ]; then
-    sed -i 's/^[[:space:]]*//;s/[[:space:]]*$//' "$BLACKLIST"
-    grep -Fvxf "$BLACKLIST" "$TMP" > "${TMP}.filtered" || true
-    mv -f "${TMP}.filtered" "$TMP"
-    log_step "CLEANED" "Blacklisted Apps removed"
-else
-    log_step "SKIPPED" "Blacklist not configured"
-fi
-
-[ "$teeBroken" = "true" ] && sed -i 's/$/!/' "$TMP" && log_step "SUPPORT" "TEE Broken detected"
-
-mv -f "$TMP" "$TARGET" && success=1 && log_step "UPDATED" "Target Packages updated"
-
-if [ ! -f "$SKIP_FILE" ] && [ "$orig_selinux" = "Enforcing" ]; then
-    setenforce 1
-fi
-exit 0
-EOF
-fi
-
-chmod 755 "$placeholder/target.sh"
-
-if [ ! -f "$placeholder/gms.sh" ]; then
-  cat <<'EOF' > "$placeholder/gms.sh"
-#!/system/bin/sh
-MODPATH="/data/adb/modules/playintegrityfix"
-. $MODPATH/common_func.sh
-
-for proc in com.google.android.gms.unstable com.google.android.gms com.android.vending; do
-  kill_process "$proc"
-done
-
-exit 0
-EOF
-fi
-
-chmod 755 "$placeholder/gms.sh"
-
-if [ ! -f "$placeholder/webui.sh" ]; then
-  cat <<'EOF' > "$placeholder/webui.sh"
-#!/system/bin/sh
-
-if pm list packages | grep -q "io.github.a13e300.ksuwebui"; then
-   am start -n "io.github.a13e300.ksuwebui/.WebUIActivity" -e id "playintegrityfix"
-   exit 0
-fi
-
-if pm list packages | grep -q "com.dergoogler.mmrl.webuix"; then
-   am start -n "com.dergoogler.mmrl.webuix/.ui.activity.webui.WebUIActivity" -e MOD_ID "playintegrityfix"
-   exit 0
-fi
-
-am start -a android.intent.action.VIEW -d "https://github.com/5ec1cff/KsuWebUIStandalone/releases"
-exit 0
-EOF
-fi
-
-chmod 755 "$placeholder/webui.sh"
-
-if [ ! -f "$placeholder/run_scan.sh" ]; then
-  cat <<'EOF' > "$placeholder/run_scan.sh"
-#!/system/bin/sh
-
-SCRIPT="/data/adb/modules/playintegrityfix/webroot/common_scripts/scan_keybox.sh"
-
-# Run detached
-sh "$SCRIPT" > /data/adb/Box-Brain/Integrity-Box-Logs/keybox_runner.log 2>&1 &
-EOF
-fi
-
-chmod 755 "$placeholder/run_scan.sh"
-
-if [ ! -f "$placeholder/scan_keybox.sh" ]; then
-  cat <<'EOF' > "$placeholder/scan_keybox.sh"
-#!/system/bin/sh
-
-OUT="/data/adb/Box-Brain/Integrity-Box-Logs/keybox_scan.log"
-TARGET="/sdcard/Download"
-
-rm -f "$OUT"
-
-# epoch|size_bytes|full_path
-find "$TARGET" -type f -iname "*.xml" -printf "%T@|%s|%p\n" 2>/dev/null \
-  | sort -nr >> "$OUT"
-EOF
-fi
-
-chmod 755 "$placeholder/scan_keybox.sh"
-
-rm -rf "$placeholder/resetprop.sh"
-if [ ! -f "$placeholder/resetprop.sh" ]; then
-  cat <<'EOF' > "$placeholder/resetprop.sh"
-#!/system/bin/sh
-PKG="com.reveny.nativecheck"
-
-su -c 'getprop | grep -E "pphooks|pihook|pixelprops|gms|pi" | sed -E "s/^\[(.*)\]:.*/\1/" | while IFS= read -r prop; do resetprop -p -d "$prop"; done'
-
-# Check if package exists
-if pm list packages | grep -q "$PKG"; then
-    echo "Package $PKG found. Force stopping..."
-    am force-stop "$PKG"
-else
-    echo "$PKG not installed."
-fi
-EOF
-fi
-
-chmod 755 "$placeholder/resetprop.sh"
-
-cat <<'EOF' > "$placeholder/Report.sh"
-#!/system/bin/sh
-
-OUT_DIR="/sdcard"
-OUT_FILE="$OUT_DIR/report.json"
-
-# helpers
-jescape() {
-  echo "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
-}
-
-json_array() {
-  awk '{printf "\"%s\",", $0}' | sed 's/,$//'
-}
-
-mask_fingerprint() {
-    local FP
-
-    # Get fingerprint from getprop first
-    FP="$(getprop ro.build.fingerprint 2>/dev/null)"
-
-    # Fallback to build.prop
-    [ -z "$FP" ] && FP="$(grep -m1 '^ro.build.fingerprint=' /system/build.prop /vendor/build.prop 2>/dev/null | cut -d= -f2)"
-
-    # Fallback to pseudo fingerprint
-    [ -z "$FP" ] && FP="$(getprop ro.product.brand 2>/dev/null)/$(getprop ro.product.device 2>/dev/null)/$(getprop ro.build.version.release 2>/dev/null)"
-
-    # Default if empty
-    [ -z "$FP" ] && FP="unknown/unknown/unknown"
-
-    # Remove leading/trailing slashes
-    FP="${FP#/}"
-    FP="${FP%/}"
-
-    # Use parameter expansion instead of IFS read to avoid byte splitting
-    local PREFIX="${FP%%/*}"      # first part
-    local REST="${FP#*/}"
-    PREFIX="${PREFIX}/"
-    local SECOND="${REST%%/*}"    # second part
-    PREFIX="${PREFIX}${SECOND}"
-
-    # Last colon-separated part as tag
-    local TAGS
-    if [[ "$FP" == *:* ]]; then
-        TAGS="${FP##*:}"
-    else
-        TAGS="unknown"
-    fi
-
-    echo "${PREFIX}/***MASKED***/${TAGS}"
-}
-
-# root implementation
-ROOT_IMPL="none"
-[ -d /data/adb/ksu/bin ] && ROOT_IMPL="kernelsu"
-[ -d /data/adb/ap/bin ] && ROOT_IMPL="apatch"
-[ -d /data/adb/magisk ] && ROOT_IMPL="magisk"
-
-# fingerprint
-FP_RAW="$(getprop ro.build.fingerprint)"
-FP_MASKED="$(mask_fingerprint "$FP_RAW")"
-
-# kernel
-KERNEL_NAME="$(uname -s)"
-KERNEL_RELEASE="$(uname -r)"
-KERNEL_VERSION="$(uname -v)"
-KERNEL_FULL="$(uname -a)"
-PROC_VERSION="$(cat /proc/version 2>/dev/null)"
-
-# system state
-SELINUX="$(getenforce 2>/dev/null)"
-VB_STATE="$(getprop ro.boot.verifiedbootstate)"
-VBMETA_STATE="$(getprop ro.boot.vbmeta.device_state)"
-FLASH_LOCKED="$(getprop ro.boot.flash.locked)"
-SECURE="$(getprop ro.secure)"
-DEBUGGABLE="$(getprop ro.debuggable)"
-QEMU="$(getprop ro.kernel.qemu)"
-
-# play services / store
-GMS_DUMP="$(dumpsys package com.google.android.gms 2>/dev/null)"
-GMS_VNAME="$(echo "$GMS_DUMP" | grep versionName | head -n1 | cut -d= -f2)"
-GMS_VCODE="$(echo "$GMS_DUMP" | grep versionCode | head -n1 | cut -d= -f2 | cut -d' ' -f1)"
-
-PLAY_DUMP="$(dumpsys package com.android.vending 2>/dev/null)"
-PLAY_VNAME="$(echo "$PLAY_DUMP" | grep versionName | head -n1 | cut -d= -f2)"
-PLAY_VCODE="$(echo "$PLAY_DUMP" | grep versionCode | head -n1 | cut -d= -f2 | cut -d' ' -f1)"
-
-# user apps
-pm list packages -3 | cut -d: -f2 > "$OUT_DIR/user_apps.tmp"
-
-# PIF
-PIF_FILE="/data/adb/modules/playintegrityfix/custom.pif.prop"
-
-# default: empty object, formatted
-PIF_JSON="{
-    }"
-
-if [ -f "$PIF_FILE" ]; then
-  PIF_JSON="$(
-    awk -F= '
-      BEGIN {
-        print "{"
-        first=1
-      }
-
-      $1=="spoofBuild" ||
-      $1=="spoofProps" ||
-      $1=="spoofProvider" ||
-      $1=="spoofSignature" ||
-      $1=="spoofVendingFinger" ||
-      $1=="spoofPixel" ||
-      $1=="spoofVendingSdk" {
-
-        if (!first) printf ",\n"
-        first=0
-        printf "        \"%s\": \"%s\"", $1, $2
-      }
-
-      END {
-        if (!first) print ""
-        print "    }"
-      }
-    ' "$PIF_FILE"
-  )"
-fi
-
-# magisk modules
-MODULES_JSON=""
-for m in /data/adb/modules/*; do
-  PROP="$m/module.prop"
-  [ -f "$PROP" ] || continue
-
-  ID="$(grep '^id=' "$PROP" | cut -d= -f2)"
-  NAME="$(grep '^name=' "$PROP" | cut -d= -f2)"
-  VERSION="$(grep '^version=' "$PROP" | cut -d= -f2)"
-  AUTHOR="$(grep '^author=' "$PROP" | cut -d= -f2)"
-
-  MODULES_JSON="${MODULES_JSON}{
-    \"id\":\"$(jescape "$ID")\",
-    \"name\":\"$(jescape "$NAME")\",
-    \"version\":\"$(jescape "$VERSION")\",
-    \"author\":\"$(jescape "$AUTHOR")\"
-  },"
-done
-
-MODULES_JSON="[${MODULES_JSON%,}]"
-
-# JSON
-{
-echo "{"
-echo "  \"timestamp\": \"$(date -Iseconds)\","
-
-echo "  \"root\": {"
-echo "    \"implementation\": \"$(jescape "$ROOT_IMPL")\""
-echo "  },"
-
-echo "  \"build\": {"
-echo "    \"fingerprint\": \"$(jescape "$FP_MASKED")\","
-echo "    \"tags\": \"$(jescape "$(getprop ro.build.tags)")\","
-echo "    \"type\": \"$(jescape "$(getprop ro.build.type)")\""
-echo "  },"
-
-echo "  \"device\": {"
-echo "    \"brand\": \"$(jescape "$(getprop ro.product.brand)")\","
-echo "    \"manufacturer\": \"$(jescape "$(getprop ro.product.manufacturer)")\","
-echo "    \"model\": \"$(jescape "$(getprop ro.product.model)")\","
-echo "    \"device\": \"$(jescape "$(getprop ro.product.device)")\""
-echo "  },"
-
-echo "  \"android\": {"
-echo "    \"version\": \"$(jescape "$(getprop ro.build.version.release)")\","
-echo "    \"sdk\": \"$(jescape "$(getprop ro.build.version.sdk)")\","
-echo "    \"security_patch\": \"$(jescape "$(getprop ro.build.version.security_patch)")\""
-echo "  },"
-
-echo "  \"kernel\": {"
-echo "    \"name\": \"$(jescape "$KERNEL_NAME")\","
-echo "    \"release\": \"$(jescape "$KERNEL_RELEASE")\","
-echo "    \"version\": \"$(jescape "$KERNEL_VERSION")\","
-echo "    \"full\": \"$(jescape "$KERNEL_FULL")\","
-echo "    \"proc_version\": \"$(jescape "$PROC_VERSION")\""
-echo "  },"
-
-echo "  \"system_state\": {"
-echo "    \"selinux\": \"$(jescape "$SELINUX")\","
-echo "    \"verified_boot\": \"$(jescape "$VB_STATE")\","
-echo "    \"vbmeta_state\": \"$(jescape "$VBMETA_STATE")\","
-echo "    \"flash_locked\": \"$(jescape "$FLASH_LOCKED")\","
-echo "    \"secure\": \"$(jescape "$SECURE")\","
-echo "    \"debuggable\": \"$(jescape "$DEBUGGABLE")\","
-echo "    \"kernel_qemu\": \"$(jescape "$QEMU")\""
-echo "  },"
-
-echo "  \"play\": {"
-echo "    \"services\": {"
-echo "      \"version_name\": \"$(jescape "$GMS_VNAME")\","
-echo "      \"version_code\": \"$(jescape "$GMS_VCODE")\""
-echo "    },"
-echo "    \"store\": {"
-echo "      \"version_name\": \"$(jescape "$PLAY_VNAME")\","
-echo "      \"version_code\": \"$(jescape "$PLAY_VCODE")\""
-echo "    }"
-echo "  },"
-
-echo "  \"playintegrityfix\": $PIF_JSON,"
-
-echo "  \"modules\": $MODULES_JSON,"
-
-echo "  \"user_apps\": [$(cat "$OUT_DIR/user_apps.tmp" | json_array)]"
-
-echo "}"
-} > "$OUT_FILE"
-
-rm -f "$OUT_DIR/user_apps.tmp"
-
-echo
-echo "======================================"
-echo " Report generated successfully"
-echo " $OUT_FILE"
-echo "======================================"
-EOF
-
-chmod 755 "$placeholder/Report.sh"
 
 cat <<'EOF' > "$boot/.box_cleanup.sh"
 #!/system/bin/sh
@@ -449,311 +73,12 @@ if [ ! -f "$PROP_FILE" ] || ! grep -Fq "$REQUIRED_LINE" "$PROP_FILE"; then
 fi
 EOF
 
-chmod 755 "$boot/.box_cleanup.sh"
-
-cat <<'EOF' > "$placeholder/force_override.sh"
-#!/system/bin/sh
-L=/data/adb/Box-Brain/Integrity-Box-Logs/ForceSpoof.log
-mkdir -p ${L%/*}
-getprop | grep -i lineage | while read l; do
-p=${l#*[}; p=${p%%]*}
-echo "$(date '+%F %T') DEL $p" >> $L
-resetprop --delete "$p"
-done
-EOF
-
-chmod 755 "$placeholder/force_override.sh"
-
-cat <<'EOF' > "$placeholder/override_lineage.sh"
-#!/system/bin/sh
-
-OVERRIDE="/data/adb/modules/playintegrityfix/webroot/common_scripts/force_override.sh"
-
-# Stop when safe mode is enabled 
-if [ -f "/data/adb/Box-Brain/safemode" ]; then
-    echo " Permission denied by Safe Mode"
-    exit 1
-fi
-
-# check prop
-echo " Checking for Lineage Props"
-getprop | grep -i lineage
-echo " "
-
-# config
-PROP_FILE="/data/adb/modules/playintegrityfix/system.prop"
-LOG_FILE="/data/adb/Box-Brain/Integrity-Box-Logs/prop_debug.log"
-
-# init logging
-echo "[prop spoof debug log]" > "$LOG_FILE"
-echo "[INFO] Script started at $(date)" >> "$LOG_FILE"
-
-# check file
-if [ ! -f "$PROP_FILE" ]; then
-    echo "[ERROR] Prop file not found: $PROP_FILE" >> "$LOG_FILE"
-    exit 1
-fi
-
-if [ ! -r "$PROP_FILE" ]; then
-    echo "[ERROR] Cannot read prop file: $PROP_FILE" >> "$LOG_FILE"
-    exit 1
-fi
-
-# process lines
-while IFS= read -r line || [ -n "$line" ]; do
-    # Strip [brackets] if present
-    clean_line=$(echo "$line" | sed -E 's/^\[(.*)\]=\[(.*)\]$/\1=\2/')
-
-    # Skip empty or comment lines
-    if [ -z "$clean_line" ] || echo "$clean_line" | grep -qE '^#'; then
-        echo "[SKIP] Empty or comment: $line" >> "$LOG_FILE"
-        continue
-    fi
-
-    key=$(echo "$clean_line" | cut -d '=' -f1)
-    value=$(echo "$clean_line" | cut -d '=' -f2-)
-
-    # Sanity check
-    if [ -z "$key" ] || [ -z "$value" ]; then
-        echo "[SKIP] Malformed line: $line" >> "$LOG_FILE"
-        continue
-    fi
-
-    case "$key" in
-        init.svc.*|ro.boottime.*)
-            echo "[SKIP] Dynamic prop (not changeable): $key" >> "$LOG_FILE"
-            continue
-            ;;
-        ro.crypto.state)
-            echo "[SKIP] Encryption state spoof skipped: $key" >> "$LOG_FILE"
-            continue
-            ;;
-        *)
-            # Attempt to override using resetprop
-            resetprop "$key" "$value"
-            # Check if the change was successful
-            actual_value=$(getprop "$key")
-            if [ "$actual_value" = "$value" ]; then
-                echo "[OK] Overridden: $key=$value" >> "$LOG_FILE"
-            else
-                echo "[WARN] Failed to override: $key. Current value: $actual_value" >> "$LOG_FILE"
-            fi
-            ;;
-    esac
-done < "$PROP_FILE"
-
-if [ -f "$OVERRIDE" ]; then
-    sh "$OVERRIDE"
-fi
-
-echo "[INFO] Script completed at $(date)" >> "$LOG_FILE"
-echo "•••••••••••••••••••••=" >> "$LOG_FILE"
-echo " "
-echo " "
-exit 0
-EOF
-
-chmod 755 "$placeholder/override_lineage.sh"
-
-touch "$placeholder/kill"
-touch "$placeholder/aosp"
-touch "$placeholder/patch"
-touch "$placeholder/xml"
-touch "$placeholder/tee"
-touch "$placeholder/user"
-touch "$placeholder/hma"
-touch "$placeholder/ulock"
-touch "$placeholder/stop"
-touch "$placeholder/start"
-touch "$placeholder/nogms"
-touch "$placeholder/lineage"
-touch "$placeholder/selinux"
-touch "$placeholder/hide"
-touch "$placeholder/resetprop"
-touch "$placeholder/faq"
-touch "$placeholder/nuke"
-touch "$placeholder/zygisknext"
-touch "$placeholder/yesgms"
-
-cat <<'EOF' > "$placeholder/hma.sh"
-#!/system/bin/sh
-
-SRC_CONFIG="/data/adb/modules/playintegrityfix/hidemyapplist/config.json"
-
-APP_PATHS="
-/data/user/0/org.frknkrc44.hma_oss
-/data/user/0/com.google.android.hmal
-/data/user/0/com.tsng.hidemyapplist
-"
-
-LOG_DIR="/data/adb/Box-Brain/Integrity-Box-Logs"
-LOG_FILE="$LOG_DIR/hma.log"
-
-BACKUP_DIR="/data/adb/HMA"
-DATE_TAG="$(date '+%Y-%m-%d_%H-%M-%S')"
-ANTISELINUX="/data/adb/Box-Brain/antiselinux"
-
-ORIG_SELINUX=""
-SELINUX_CHANGED=0
-PKG_NAME=""
-ACTIVITY=""
-
-mkdir -p "$LOG_DIR"
-mkdir -p "$BACKUP_DIR"
-
-log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"
-}
-
-get_selinux_mode() {
-    if command -v getenforce >/dev/null 2>&1; then
-        getenforce
-    else
-        echo "Unknown"
-    fi
-}
-
-set_selinux_permissive() {
-    if command -v setenforce >/dev/null 2>&1; then
-        setenforce 0
-    fi
-}
-
-restore_selinux() {
-    if [ "$SELINUX_CHANGED" -eq 1 ] && [ "$ORIG_SELINUX" = "Enforcing" ]; then
-        log "Restoring SELinux to Enforcing"
-        setenforce 1
-    fi
-}
-
-log "•••••••••••••= HMA config sync started •••••••••••••"
-
-if [ ! -f "$SRC_CONFIG" ]; then
-    log "ERROR: Source config not found: $SRC_CONFIG"
-    exit 1
-fi
-
-log "Source config found: $SRC_CONFIG"
-
-HMA_INSTALLED=0
-if pm list packages | grep -q "^package:org.frknkrc44.hma_oss$"; then
-    HMA_INSTALLED=1
-    PKG_NAME="org.frknkrc44.hma_oss"
-    ACTIVITY="org.frknkrc44.hma_oss/.ui.activity.MainActivity"
-elif pm list packages | grep -q "^package:com.google.android.hmal$"; then
-    HMA_INSTALLED=1
-    PKG_NAME="com.google.android.hmal"
-    ACTIVITY="com.google.android.hmal/icu.nullptr.hidemyapplist.ui.activity.MainActivity"
-elif pm list packages | grep -q "^package:com.tsng.hidemyapplist$"; then
-    HMA_INSTALLED=1
-    PKG_NAME="com.tsng.hidemyapplist"
-    ACTIVITY="com.tsng.hidemyapplist/icu.nullptr.hidemyapplist.ui.activity.MainActivity"
-fi
-
-if [ "$HMA_INSTALLED" -eq 0 ]; then
-    log "No supported HMA app installed"
-    log "Opening download page..."
-    nohup am start -a android.intent.action.VIEW -d "https://github.com/frknkrc44/HMA-OSS/releases" > /dev/null 2>&1 &
-    exit 1
-fi
-
-log "Resolved package name: $PKG_NAME"
-
-TARGET_APP=""
-for APP in $APP_PATHS; do
-    if [ -d "$APP" ]; then
-        TARGET_APP="$APP"
-        log "Found installed app data path: $APP"
-        break
-    fi
+# Create all placeholder files only if they don't exist
+for file in kill aosp patch xml tee user hma ulock stop start nogms lineage selinux hide resetprop faq nuke zygisknext yesgms; do
+    [ -f "$placeholder/$file" ] || touch "$placeholder/$file"
 done
 
-if [ -z "$TARGET_APP" ]; then
-    log "App installed but data directory not found"
-    log "Launching app to create data directory..."
-    log "Launching activity: $ACTIVITY"
-    am start --user 0 -a android.intent.action.VIEW -n "$ACTIVITY" >>"$LOG_FILE" 2>&1
-    sleep 5
-    am force-stop "$PKG_NAME" >>"$LOG_FILE" 2>&1
-    log "App launched and stopped, checking data directory..."
-    
-    for APP in $APP_PATHS; do
-        if [ -d "$APP" ]; then
-            TARGET_APP="$APP"
-            log "Data directory now available: $APP"
-            break
-        fi
-    done
-    
-    if [ -z "$TARGET_APP" ]; then
-        log "ERROR: Data directory still not created after launch"
-        exit 1
-    fi
-fi
-
-TARGET_FILES="$TARGET_APP/files"
-TARGET_CONFIG="$TARGET_FILES/config.json"
-
-if [ ! -d "$TARGET_FILES" ]; then
-    log "/files directory missing, creating: $TARGET_FILES"
-    mkdir -p "$TARGET_FILES" || {
-        log "ERROR: Failed to create $TARGET_FILES"
-        exit 1
-    }
-fi
-
-if [ -f "$TARGET_CONFIG" ]; then
-    BACKUP_NAME="config_${DATE_TAG}.json"
-    log "Existing config found, moving to $BACKUP_DIR/$BACKUP_NAME"
-    mv "$TARGET_CONFIG" "$BACKUP_DIR/$BACKUP_NAME" || {
-        log "ERROR: Failed to move existing config"
-        exit 1
-    }
-fi
-
-log "Copying new config to $TARGET_CONFIG"
-cp "$SRC_CONFIG" "$TARGET_CONFIG" || {
-    log "ERROR: Failed to copy new config"
-    exit 1
-}
-
-chmod 666 "$TARGET_CONFIG"
-chown system:system "$TARGET_CONFIG" 2>/dev/null
-
-if [ ! -f "$ANTISELINUX" ]; then
-    ORIG_SELINUX="$(get_selinux_mode)"
-    log "Current SELinux mode: $ORIG_SELINUX"
-    if [ "$ORIG_SELINUX" = "Enforcing" ]; then
-        log "Switching SELinux to Permissive temporarily"
-        set_selinux_permissive
-        SELINUX_CHANGED=1
-        sleep 0.5
-    fi
-else
-    log "antiselinux flag found, skipping SELinux mode change"
-fi
-
-log "Force stopping app: $PKG_NAME"
-am force-stop "$PKG_NAME" >>"$LOG_FILE" 2>&1
-sleep 1
-log "Launching activity: $ACTIVITY"
-am start --user 0 -a android.intent.action.VIEW -n "$ACTIVITY" >>"$LOG_FILE" 2>&1
-if [ $? -eq 0 ]; then
-    log "App launched successfully"
-else
-    log "ERROR: Failed to launch app"
-fi
-
-restore_selinux
-log "Config copy completed successfully"
-log "••••••••••••• Finished •••••••••••••"
-log
-log
-exit 0
-EOF
-
-chmod 777 "$placeholder/hma.sh"
-
+if [ ! -f "$boot/package.sh" ]; then
 cat <<'EOF' > "$boot/package.sh"
 #!/system/bin/sh
 
@@ -765,6 +90,12 @@ MODULE3="/data/adb/modules/Yurikey"
 MODULE4="/data/adb/modules/tricky_store/webroot"
 
 if [ ! -d "$MODULE1" ] && [ ! -d "$MODULE2" ] && [ ! -d "$MODULE3" ] && [ ! -d "$MODULE4" ]; then
+    exit 0
+fi
+
+# Check ignore flag
+if [ -f "$IGNORE_FLAG" ]; then
+    log "Ignore flag found, exiting"
     exit 0
 fi
 
@@ -781,12 +112,6 @@ mkdir -p "$(dirname "$LOG_FILE")"
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"
 }
-
-# Check ignore flag
-if [ -f "$IGNORE_FLAG" ]; then
-    log "Ignore flag found, exiting"
-    exit 0
-fi
 
 # Function to check and execute
 execute_if_needed() {
@@ -828,9 +153,9 @@ while true; do
     execute_if_needed
 done
 EOF
+fi
 
-chmod 777 "$boot/package.sh"
-
+if [ ! -f "$boot/lineage.sh" ]; then
 cat <<'EOF' > "$boot/lineage.sh"
 #!/system/bin/sh
 
@@ -963,9 +288,9 @@ if [ -f "$NODEBUG_FLAG" ] || [ -f "$TAG_FLAG" ]; then
     fi
 fi
 EOF
+fi
 
-chmod 777 "$boot/lineage.sh"
-
+if [ ! -f "$boot/hash.sh" ]; then
 cat <<'EOF' > "$boot/hash.sh"
 #!/system/bin/sh
 
@@ -1047,15 +372,15 @@ log " "
 
 exit 0
 EOF
+fi
 
-chmod 777 "$boot/hash.sh"
-
-#if [ ! -f "$boot/prop.sh" ]; then
+if [ ! -f "$placeholder/may" ]; then
+touch "$placeholder/may"
 cat <<'EOF' > "$boot/prop.sh"
 #!/system/bin/sh
 
 # CONFIG
-PATCH_DATE="2026-04-01"
+PATCH_DATE="2026-05-01"
 FILE_PATH="/data/adb/tricky_store/security_patch.txt"
 SKIP_FILE="/data/adb/Box-Brain/skip"
 LOG_DIR="/data/adb/Box-Brain/Integrity-Box-Logs"
@@ -1073,11 +398,11 @@ abort() {
 }
 
 # SAFE MODE CHECK
-if [ -f "/data/adb/Box-Brain/safemode" ]; then
-    echo "$(date '+%Y-%m-%d %H:%M:%S') : Safemode active, script aborted." \
-        >> "/data/adb/Box-Brain/Integrity-Box-Logs/safemode.log"
-    exit 1
-fi
+#if [ -f "/data/adb/Box-Brain/safemode" ]; then
+#    echo "$(date '+%Y-%m-%d %H:%M:%S') : Safemode active, script aborted." \
+#        >> "/data/adb/Box-Brain/Integrity-Box-Logs/safemode.log"
+#    exit 1
+#fi
 
 # RESETPROP CHECK
 if ! command -v resetprop >/dev/null 2>&1; then
@@ -1137,9 +462,7 @@ fi
 writelog "•••••• Script Finished Successfully ••••••"
 exit 0
 EOF
-#fi
-
-chmod 777 "$boot/prop.sh"
+fi
 
 ##########################################
 # adapted from Shamiko (service.sh) by @LSPosed
@@ -1204,7 +527,27 @@ contains_reset_prop "vendor.boot.bootmode" "recovery" "unknown"
 EOF
 fi
 
-chmod 777 "$boot/shamiko.sh"
+# Verify backend perms
+for _f in \
+    "$boot/shamiko.sh" \
+    "$boot/prop.sh" \
+    "$boot/hash.sh" \
+    "$boot/lineage.sh" \
+    "$boot/package.sh" \
+    "$boot/.box_cleanup.sh" \
+    "$placeholder/target.sh" \
+    "$placeholder/gms.sh" \
+    "$placeholder/webui.sh" \
+    "$placeholder/run_scan.sh" \
+    "$placeholder/scan_keybox.sh" \
+    "$placeholder/resetprop.sh" \
+    "$placeholder/Report.sh" \
+    "$placeholder/force_override.sh" \
+    "$placeholder/override_lineage.sh" \
+    "$placeholder/hma.sh"
+do
+    set_perm_if_needed "$_f" 755
+done
 
 ##########################################
 # adapted from Play Integrity Fork by @osm0sis
