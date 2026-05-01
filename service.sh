@@ -3,6 +3,7 @@ MODPATH="${0%/*}"
 . $MODPATH/common_func.sh
 
 # Module path and file references
+ROOT_SOL=$(detect_root_solution)
 SCRIPT="$MODPATH/webroot/common_scripts/autopilot.sh"
 LOG_DIR="/data/adb/Box-Brain/Integrity-Box-Logs"
 PROP="/data/adb/modules/playintegrityfix/system.prop"
@@ -24,6 +25,72 @@ mkdir -p "$LOG_DIR"
 log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') | $1" | tee -a "$LOG"
 }
+
+setup_resetprop
+
+# Boot-Phase Properties
+# Wait for boot
+case "$ROOT_SOL" in
+    magisk|kernelsu|apatch) $PROP_WAIT sys.boot_completed 0 ;;
+esac
+
+# •••• EARLY BOOT PROPS ••••
+
+# Bootloader/VBMeta
+resetprop_if_diff "ro.boot.vbmeta.device_state" "locked"
+resetprop_if_diff "vendor.boot.vbmeta.device_state" "locked"
+resetprop_if_diff "ro.boot.verifiedbootstate" "green"
+resetprop_if_diff "vendor.boot.verifiedbootstate" "green"
+resetprop_if_diff "ro.boot.flash.locked" "1"
+resetprop_if_diff "ro.boot.veritymode" "enforcing"
+
+# Warranty/Debug
+resetprop_if_diff "ro.boot.warranty_bit" "0"
+resetprop_if_diff "ro.warranty_bit" "0"
+resetprop_if_diff "ro.vendor.boot.warranty_bit" "0"
+resetprop_if_diff "ro.vendor.warranty_bit" "0"
+resetprop_if_diff "ro.debuggable" "0"
+resetprop_if_diff "ro.force.debuggable" "0"
+resetprop_if_diff "ro.secure" "1"
+resetprop_if_diff "ro.adb.secure" "1"
+resetprop_if_diff "sys.oem_unlock_allowed" "0"
+
+# Build
+resetprop_if_diff "ro.build.type" "user"
+resetprop_if_diff "ro.build.tags" "release-keys"
+
+# OEM-Specific
+resetprop_if_diff "ro.secureboot.lockstate" "locked"  # MIUI
+resetprop_if_diff "ro.boot.realmebootstate" "green"   # Realme
+resetprop_if_diff "ro.boot.realme.lockstate" "1"       # Realme
+
+# Recovery Mode Hiding
+resetprop_if_match "ro.bootmode" "recovery" "unknown"
+resetprop_if_match "ro.boot.bootmode" "recovery" "unknown"
+resetprop_if_match "vendor.boot.bootmode" "recovery" "unknown"
+
+# USB/ADB
+resetprop_if_diff "sys.usb.adb.disabled" "1"
+resetprop_if_diff "service.adb.root" "0"
+resetprop_if_diff "persist.sys.developer_options" "0"
+resetprop_if_diff "persist.sys.dev_mode" "0"
+resetprop_if_diff "persist.sys.debuggable" "0"
+resetprop_if_diff "ro.oem_unlock_supported" "0"
+resetprop_if_diff "ro.hardware.virtual_device" "0"
+
+# SELinux
+resetprop_if_diff "ro.boot.selinux" "enforcing"
+[ "$ROOT_SOL" = "magisk" ] && ! [ -f "$MODPATH/skipdelprop" ] && delprop_if_exist "ro.build.selinux"
+
+# Fix SELinux permissions if permissive
+#if [ "$(cat /sys/fs/selinux/enforce 2>/dev/null)" = "0" ]; then
+#    chmod 640 /sys/fs/selinux/enforce 2>/dev/null
+#    chmod 440 /sys/fs/selinux/policy 2>/dev/null
+#fi
+
+# Run compact after early props if supported
+run_compact
+sleep 120
 
 # Spoof Encryption 
 {
@@ -57,7 +124,7 @@ log() {
       echo "Prop already exists, no action needed"
     else
       echo "$PROP2" >> "$PROP"
-      echo "Spoofed prop: $PROP1"
+      echo "Spoofed prop: $PROP2"
     fi
   else
     if grep -qxF "$PROP2" "$PROP"; then
@@ -101,74 +168,12 @@ log() {
   [ -f /data/adb/Box-Brain/twrp ] && hide_recovery_folders
 } >> "$LOG4" 2>&1
 
-# Reset system properties if mismatch 
-resetprop_if_diff sys.usb.adb.disabled 1
-resetprop_if_diff service.adb.root 0
-resetprop_if_diff persist.sys.developer_options 0
-resetprop_if_diff persist.sys.dev_mode 0
-resetprop_if_diff persist.sys.debuggable 0
-resetprop_if_diff ro.oem_unlock_supported 0
-resetprop_if_diff ro.hardware.virtual_device 0
-
-##########################################
-# adapted from Play Integrity Fork by @osm0sis
-# source: https://github.com/osm0sis/PlayIntegrityFork
-# license: GPL-3.0
-##########################################
-
-# Conditional sensitive properties
-# Magisk Recovery Mode
-resetprop_if_match ro.boot.mode recovery unknown
-resetprop_if_match ro.bootmode recovery unknown
-resetprop_if_match vendor.boot.mode recovery unknown
-
-# SELinux
-resetprop_if_diff ro.boot.selinux enforcing
-# use delete since it can be 0 or 1 for enforcing depending on OEM
-if ! $SKIPDELPROP; then
-    delprop_if_exist ro.build.selinux
-fi
-# use toybox to protect stat access time reading
-if [ "$(toybox cat /sys/fs/selinux/enforce)" = "0" ]; then
-    chmod 640 /sys/fs/selinux/enforce
-    chmod 440 /sys/fs/selinux/policy
-fi
-
-# Conditional late sensitive properties
-
-# must be set after boot_completed for various OEMs
-{
-until [ "$(getprop sys.boot_completed)" = "1" ]; do
-    sleep 1
-done
-
-# SafetyNet/Play Integrity + OEM
-# avoid bootloop on some Xiaomi devices
-resetprop_if_diff ro.secureboot.lockstate locked
-# avoid breaking Realme fingerprint scanners
-resetprop_if_diff ro.boot.flash.locked 1
-resetprop_if_diff ro.boot.realme.lockstate 1
-# avoid breaking Oppo fingerprint scanners
-resetprop_if_diff ro.boot.vbmeta.device_state locked
-# avoid breaking OnePlus display modes/fingerprint scanners
-resetprop_if_diff vendor.boot.verifiedbootstate green
-# avoid breaking OnePlus/Oppo fingerprint scanners on OOS/ColorOS 12+
-resetprop_if_diff ro.boot.verifiedbootstate green
-resetprop_if_diff ro.boot.veritymode enforcing
-resetprop_if_diff vendor.boot.vbmeta.device_state locked
-
-# Other
-resetprop_if_diff sys.oem_unlock_allowed 0
-
-}&
-
-# Stop when needed
+# Stop daemon if needed 
 if [ -f "/data/adb/Box-Brain/rukja" ]; then
-    log "Daemon disabled by user"
-    exit 1
+    exit 0
 fi
 
-# Restarts daemon if dead
+# Restart daemon if dead
 while true; do
     if [ -f "/data/adb/Box-Brain/autopilot" ]; then
         # Check heartbeat
