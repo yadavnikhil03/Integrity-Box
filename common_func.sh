@@ -3,7 +3,99 @@ OUT="/storage/emulated/0/Download/IntegrityModules"
 BOX="/data/adb/Box-Brain"
 LOGZ="/data/adb/Box-Brain/Integrity-Box-Logs/integrity_downloader.log"
 LOG_FILE="/data/adb/Box-Brain/Integrity-Box-Logs/action.log"
-WIDTH=55
+WIDTH=53
+
+# Property Backend Setup
+RESETPROP="resetprop"
+PROP_DELETE="resetprop --delete"
+PROP_WAIT="resetprop -w"
+COMPACT_SUPPORTED=false
+
+# Root Solution Detection & Binary Setup
+detect_root_solution() {
+    if [ -f "/data/adb/ksud" ] || [ -d "/data/adb/ksu" ]; then
+        # KernelSU
+        if [ -f "/data/adb/ksu/bin/resetprop" ]; then
+            export PATH="/data/adb/ksu/bin:$PATH"
+            echo "kernelsu"
+        else
+            echo "kernelsu_legacy"
+        fi
+    elif [ -f "/data/adb/apd" ] || [ -d "/data/adb/ap" ]; then
+        # APatch
+        if [ -f "/data/adb/ap/bin/resetprop" ]; then
+            export PATH="/data/adb/ap/bin:$PATH"
+            echo "apatch"
+        else
+            echo "apatch_legacy"
+        fi
+    elif [ -f "/data/adb/magisk" ] || [ -f "/data/adb/magisk/magisk" ]; then
+        # Magisk
+        echo "magisk"
+    else
+        echo "unknown"
+    fi
+}
+
+ROOT_SOL=$(detect_root_solution)
+
+# resetprop Feature Detection
+check_compact_support() {
+    resetprop --help 2>&1 | grep -q "compact"
+}
+
+# stub for boot-time
+if [ "$(getprop sys.boot_completed)" != "1" ]; then
+    ui_print() { return; }
+fi
+
+setup_resetprop() {
+    case "$ROOT_SOL" in
+        magisk)
+            # Check Magisk version for hexpatch fallback
+            if [ -f /data/adb/magisk/util_functions.sh ]; then
+                MAGISK_VER=$(grep MAGISK_VER_CODE /data/adb/magisk/util_functions.sh | cut -d= -f2)
+                [ "$MAGISK_VER" -lt 27003 ] 2>/dev/null && RESETPROP="resetprop_hexpatch" || RESETPROP="resetprop -n"
+            else
+                RESETPROP="resetprop -n"
+            fi
+            check_compact_support && COMPACT_SUPPORTED=true
+            ;;
+        kernelsu|apatch)
+            # Modern KSU/APatch with resetprop support
+            RESETPROP="resetprop -n"
+            PROP_DELETE="resetprop --delete"
+            PROP_WAIT="resetprop -w"
+            check_compact_support && COMPACT_SUPPORTED=true
+            ;;
+        kernelsu_legacy|apatch_legacy|unknown)
+            # Legacy or unknown - limited setprop only
+            RESETPROP="setprop"
+            PROP_DELETE="setprop"  # Can't actually delete
+            PROP_WAIT="sleep"
+            ;;
+    esac
+}
+
+
+set_perm_if_needed() {
+    _file="$1"
+    _perm="$2"
+    
+    # Skip if missing
+    [ -e "$_file" ] || return 0
+    
+    # For 755: just check if owner executable bit is set
+    [ -x "$_file" ] && return 0
+    
+    # Only chmod if not executable
+    chmod "$_perm" "$_file" 2>/dev/null || true
+}
+
+# Compact Function
+run_compact() {
+    $COMPACT_SUPPORTED && resetprop -c 2>/dev/null
+}
 
 # Logger function
 pif() {
@@ -31,6 +123,15 @@ banner() {
   printf "%${WIDTH}s\n" | tr ' ' '='
   center "INTEGRITY BOX DOWNLOADER"
   printf "%${WIDTH}s\n" | tr ' ' '='
+}
+
+randomize_banner() {
+    local prop_file="/data/adb/modules/playintegrityfix/module.prop"
+    local base_url="https://raw.githubusercontent.com/MeowDump/MeowDump/refs/heads/main/Banner"
+    local random_num=$((RANDOM % 14 + 1))
+    local new_banner="${base_url}/mona${random_num}.png"
+    
+    sed -i "s|^banner=.*|banner=${new_banner}|" "$prop_file"
 }
 
 print_row() {
@@ -524,7 +625,7 @@ ensure_blacklist_entries() {
     mkdir -p "$(dirname "$BLACKLIST")"
     [ -f "$BLACKLIST" ] || touch "$BLACKLIST"
 
-    # Required blacklist entries
+    # list of blacklisted packages 
     REQUIRED_ENTRIES="
 io.github.vvb2060.mahoshojo
 com.reveny.nativecheck
@@ -539,6 +640,21 @@ com.topjohnwu.magisk
 com.dergoogler.mmrl.wx
 com.dergoogler.mmrl
 org.frknkrc44.hma_oss
+bin.mt.plus
+ch.protonvpn.android
+com.android.chrome
+com.google.android.apps.docs
+com.google.android.apps.photos
+com.google.android.contactkeys
+com.google.android.safetycore
+com.google.android.youtube
+com.google.ar.core
+com.heytap.browser
+com.kimcy929.screenrecorder
+com.kowx712.supermanager
+com.metrolist.music
+mark.via.gp
+org.swiftapps.swiftbackup
 "
 
     for entry in $REQUIRED_ENTRIES; do
@@ -564,7 +680,7 @@ ensure_exec_permissions() {
 }
 
 ##########################################
-# adapted from Play Integrity Fork by @osm0sis
+# adapted from Play Integrity Fork by @osm0sis & Shamiko by @Lsposed Team
 # source: https://github.com/osm0sis/PlayIntegrityFork
 # license: GPL-3.0
 ##########################################
@@ -572,37 +688,85 @@ ensure_exec_permissions() {
 SKIPDELPROP=false
 [ -f "$MODPATH/skipdelprop" ] && SKIPDELPROP=true
 
-# delprop_if_exist <prop name>
-delprop_if_exist() {
+# Core Property Functions
+# resetprop_if_diff <prop> <expected>
+resetprop_if_diff() {
     local NAME="$1"
-
-    [ -n "$(resetprop "$NAME")" ] && resetprop --delete "$NAME"
+    local EXPECTED="$2"
+    local CURRENT
+    
+    case "$ROOT_SOL" in
+        magisk|kernelsu|apatch)
+            CURRENT="$(resetprop "$NAME")"
+            [ -z "$CURRENT" ] || [ "$CURRENT" = "$EXPECTED" ] || $RESETPROP "$NAME" "$EXPECTED"
+            ;;
+        *)
+            CURRENT="$(getprop "$NAME")"
+            [ -z "$CURRENT" ] || [ "$CURRENT" = "$EXPECTED" ] || setprop "$NAME" "$EXPECTED" 2>/dev/null
+            ;;
+    esac
 }
 
-SKIPPERSISTPROP=false
-[ -f "$MODPATH/skippersistprop" ] && SKIPPERSISTPROP=true
+# resetprop_if_match <prop> <match> <new_value>
+resetprop_if_match() {
+    local NAME="$1"
+    local MATCH="$2"
+    local VALUE="$3"
+    local CURRENT
+    
+    case "$ROOT_SOL" in
+        magisk|kernelsu|apatch)
+            CURRENT="$(resetprop "$NAME")"
+            ;;
+        *)
+            CURRENT="$(getprop "$NAME")"
+            ;;
+    esac
+    
+    case "$CURRENT" in
+        *"$MATCH"*) $RESETPROP "$NAME" "$VALUE" ;;
+    esac
+}
 
-# persistprop <prop name> <new value>
+# delprop_if_exist <prop>
+delprop_if_exist() {
+    case "$ROOT_SOL" in
+        magisk|kernelsu|apatch)
+            [ -n "$(resetprop "$1")" ] && $PROP_DELETE "$1"
+            ;;
+        *)
+            # Can't delete on legacy, set to empty
+            setprop "$1" "" 2>/dev/null
+            ;;
+    esac
+}
+
+# persistprop <prop> <value>
 persistprop() {
+    [ "$ROOT_SOL" = "kernelsu_legacy" ] || [ "$ROOT_SOL" = "apatch_legacy" ] || [ "$ROOT_SOL" = "unknown" ] && return 0
+    
     local NAME="$1"
     local NEWVALUE="$2"
     local CURVALUE="$(resetprop "$NAME")"
 
-    if ! grep -q "$NAME" $MODPATH/uninstall.sh 2>/dev/null; then
+    if ! grep -q "$NAME" "$MODPATH/uninstall.sh" 2>/dev/null; then
         if [ "$CURVALUE" ]; then
-            [ "$NEWVALUE" = "$CURVALUE" ] || echo "resetprop -n -p \"$NAME\" \"$CURVALUE\"" >> $MODPATH/uninstall.sh
+            [ "$NEWVALUE" = "$CURVALUE" ] || echo "resetprop -n -p \"$NAME\" \"$CURVALUE\"" >> "$MODPATH/uninstall.sh"
         else
-            echo "resetprop -p --delete \"$NAME\"" >> $MODPATH/uninstall.sh
+            echo "resetprop -p --delete \"$NAME\"" >> "$MODPATH/uninstall.sh"
         fi
     fi
     resetprop -n -p "$NAME" "$NEWVALUE"
 }
 
-RESETPROP="resetprop -n"
-[ -f /data/adb/magisk/util_functions.sh ] && [ "$(grep MAGISK_VER_CODE /data/adb/magisk/util_functions.sh | cut -d= -f2)" -lt 27003 ] && RESETPROP=resetprop_hexpatch
+# Legacy wrappers
+check_reset_prop() { resetprop_if_diff "$@"; }
+contains_reset_prop() { resetprop_if_match "$@"; }
 
-# resetprop_hexpatch [-f|--force] <prop name> <new value>
+# Hexpatch Fallback
 resetprop_hexpatch() {
+    [ "$ROOT_SOL" != "magisk" ] && return 1
+    
     case "$1" in
         -f|--force) local FORCE=1; shift;;
     esac 
@@ -611,8 +775,8 @@ resetprop_hexpatch() {
     local NEWVALUE="$2"
     local CURVALUE="$(resetprop "$NAME")"
 
-    [ ! "$NEWVALUE" -o ! "$CURVALUE" ] && return 1
-    [ "$NEWVALUE" = "$CURVALUE" -a ! "$FORCE" ] && return 2
+    [ ! "$NEWVALUE" ] || [ ! "$CURVALUE" ] && return 1
+    [ "$NEWVALUE" = "$CURVALUE" ] && [ ! "$FORCE" ] && return 2
 
     local NEWLEN=${#NEWVALUE}
     if [ -f /dev/__properties__ ]; then
@@ -621,38 +785,9 @@ resetprop_hexpatch() {
         local PROPFILE="/dev/__properties__/$(resetprop -Z "$NAME")"
     fi
     [ ! -f "$PROPFILE" ] && return 3
-    local NAMEOFFSET=$(echo $(strings -t d "$PROPFILE" | grep "$NAME") | cut -d\  -f1)
+    local NAMEOFFSET=$(strings -t d "$PROPFILE" | grep "$NAME" | head -1 | cut -d\  -f1)
 
-    #<hex 2-byte change counter><flags byte><hex length of prop value><prop value + nul padding to 92 bytes><prop name>
     local NEWHEX="$(printf '%02x' "$NEWLEN")$(printf "$NEWVALUE" | od -A n -t x1 -v | tr -d ' \n')$(printf "%$((92-NEWLEN))s" | sed 's/ /00/g')"
-
-    printf "Patch '$NAME' to '$NEWVALUE' in '$PROPFILE' @ 0x%08x -> \n[0000??$NEWHEX]\n" $((NAMEOFFSET-96))
-
-    echo -ne "\x00\x00" \
-        | dd obs=1 count=2 seek=$((NAMEOFFSET-96)) conv=notrunc of="$PROPFILE"
-    echo -ne "$(printf "$NEWHEX" | sed -e 's/.\{2\}/&\\x/g' -e 's/^/\\x/' -e 's/\\x$//')" \
-        | dd obs=1 count=93 seek=$((NAMEOFFSET-93)) conv=notrunc of="$PROPFILE"
+    echo -ne "\x00\x00" | dd obs=1 count=2 seek=$((NAMEOFFSET-96)) conv=notrunc of="$PROPFILE" 2>/dev/null
+    echo -ne "$(printf "$NEWHEX" | sed -e 's/.\{2\}/&\\x/g' -e 's/^/\\x/' -e 's/\\x$//')" | dd obs=1 count=93 seek=$((NAMEOFFSET-93)) conv=notrunc of="$PROPFILE" 2>/dev/null
 }
-
-# resetprop_if_diff <prop name> <expected value>
-resetprop_if_diff() {
-    local NAME="$1"
-    local EXPECTED="$2"
-    local CURRENT="$(resetprop "$NAME")"
-
-    [ -z "$CURRENT" ] || [ "$CURRENT" = "$EXPECTED" ] || $RESETPROP "$NAME" "$EXPECTED"
-}
-
-# resetprop_if_match <prop name> <value match string> <new value>
-resetprop_if_match() {
-    local NAME="$1"
-    local CONTAINS="$2"
-    local VALUE="$3"
-
-    [[ "$(resetprop "$NAME")" = *"$CONTAINS"* ]] && $RESETPROP "$NAME" "$VALUE"
-}
-
-# stub for boot-time
-if [ "$(getprop sys.boot_completed)" != "1" ]; then
-    ui_print() { return; }
-fi
