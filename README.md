@@ -6,6 +6,10 @@
 1) - [**Official Tricky Store**](https://github.com/5ec1cff/TrickyStore/releases) or [**TEE Simulator**](https://github.com/JingMatrix/TEESimulator/releases) (use any one)
 
 2) - [**Zygisk Next**](https://github.com/Dr-TSNG/ZygiskNext/releases) or [**ReZygisk**](https://github.com/PerformanC/ReZygisk/releases) (use any one)
+
+
+> - If you are using Pixel stock ROM, or if you want to use your custom ROM's inbuilt spoofing feature, you do not need Zygisk. Simply create a file or folder named `zygisk` in your internal storage `/sdcard/zygisk` (make sure the name is exactly lowercase), and then flash Integrity Box. This will disable all zygisk related components and grant you full CONTROL without any conflict
+
 #
 </details>
 
@@ -58,9 +62,9 @@
   Yes.
 
 - **Is there a global safety option?**  
-  Yes, the Kill Switch.
+  Yes, the Safe Mode.
 
-- **What does the Kill Switch do?**  
+- **What does the Safe Mode do?**  
   Disables all experimental features.
 
 - **Can I recover easily if something breaks?**  
@@ -186,7 +190,7 @@
 <details>
 <summary><strong>About Module Settings</strong></summary>
 
-- `Kill Switch :` Enable this & reboot your device if you face any issue after flashing integrity box, this will disable all experimental settings.
+- `Safe Mode :` Enable this & reboot your device if you face any issue after flashing integrity box, this will disable all experimental settings.
 - `Debug Fingerprint :` cleans debug tag from fingerprint to bypass custom rom detection and pass play integrity with stock fingerprint
 - `Debug Build :` spoofs developement build as user
 - `Build Tag :` spoofs build tag to bypass custom rom detection
@@ -260,7 +264,6 @@ Ensure all requirements are met and recheck this list before reporting an issue.
 #### This project uses code from the following external open-source work:
 - **[ezme-nodebug](https://github.com/ez-me/ezme-nodebug)**
 - **[PlayIntegrityFork](https://github.com/osm0sis/PlayIntegrityFork)**
-- **[Shamiko](https://github.com/LSPosed/LSPosed.github.io/tree/shamiko-414)** (open source late start service)
 #
 </details>
 
@@ -322,23 +325,7 @@ Play Integrity is stricter than older systems and is actively updated by Google.
   <a href="https://t.me/integritybox" target="_blank">
     <img src="https://cdn-icons-png.freepik.com/512/1593/1593170.png" width="150" alt="Get Keybox">
   </a>
-  <a href="https://github.com/MeowDump/Integrity-Box/raw/main/fingerprint/meow.json" target="_blank">
-    <img src="https://cdn-icons-png.freepik.com/512/1037/1037286.png?ga=GA1.1.2121308824.1769410236" width="150" alt="Download pifg.json">
-  </a>
-  <!-- 
-  </a>
-  <a href="https://github.com/MeowDump/Integrity-Box/raw/main/hidemyapplist/config.json" target="_blank">
-    <img src="https://cdn-icons-png.freepik.com/512/2858/2858053.png" width="150" alt="Download config.json">
-  </a>
-  -->
-  <a href="https://www.apkmirror.com/apk/google-inc/google-play-store/google-play-store-44-0-28-release/google-play-store-44-0-28-31-0-pr-705297086-android-apk-download/download/?key=261d00891f4c423b72e15329321563601ec849e8&forcebaseapk=true" target="_blank">
-    <img src="https://cdn-icons-png.freepik.com/512/270/270011.png?ga=GA1.1.2121308824.1769410236" width="150" alt="Downgrade PlayStore v40.xx">
-  </a>
 </div>
-
-
-
-
 
 ## Preview
 <p align="center">
