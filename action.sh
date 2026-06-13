@@ -26,10 +26,10 @@ INSTALLATION="/data/adb/modules_update/playintegrityfix/webroot/common_scripts/k
 FLAG="$BOX/advanced"
 PATCH_FLAG="$BOX/patch"
 
-P="$MODPATH/custom.pif.prop"
+P="$MODPATH/pixel.txt"
 SKIP_FILE="/data/adb/Box-Brain/skip"
 
-PATCH_DATE="2026-05-01"
+PATCH_DATE="2026-06-01"
 PROP_MAIN="ro.build.version.security_patch"
 
 TARGET_DIR="/data/adb/tricky_store"
@@ -159,7 +159,7 @@ fi
 
 if [ -f "$BOX/root" ]; then
   rm -f "$BOX/root"
-  find "$DIR" -type f \( -name "*_install_log_2026*" -o -name "*_action_log_2025*" \) | while read -r f; do
+  find "$DIR" -type f \( -name "*_install_log_2026*" -o -name "*_action_log_2026*" \) | while read -r f; do
     echo "$(date '+%F %T') Deleted: $f" | tee -a "$LOG"
     rm -f "$f"
   done
@@ -229,8 +229,8 @@ if [ -f "$BOX/gapps" ]; then
 /tmp/bitgapps_debug_logs_*.tar.gz
 /sdcard/bitgapps_debug_logs_*.tar.gz
 /system/etc/bitgapps_debug_logs_*.tar.gz
-/sdcard/Download/*_install_log_2025*
-/sdcard/Download/*_action_log_2025*
+/sdcard/Download/*_install_log_2026*
+/sdcard/Download/*_action_log_2026*
 "
 
   for path in $TARGETS; do
@@ -295,13 +295,8 @@ log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >>"$CPP"; }
 print_header
 
 sh "$UPDATE" || { sleep 10; exit 1; }
+echo " "
 
-echo " "
-echo "════════════════════════════════"
-echo "      Activating Integrity Engine"
-echo "════════════════════════════════"
-echo " "
-  
 # RUN STEPS
 # Ensure log file exists
 mkdir -p "$(dirname "$CPP")" 2>/dev/null || true
@@ -341,6 +336,21 @@ for f in keybox keybox2; do
     su -c "[ -e \"$FLAG\" ] && [ -r \"$SRC\" ] && cat \"$SRC\" > \"$DEST\" && sync" >/dev/null 2>&1
 done
 
+# Spoofing
+if [ -f "$FLAG" ] && [ -f "$MODPATH/osm0sis.sh" ]; then
+    sh "$MODPATH/osm0sis.sh" && log_step "UPDATED" "Advanced Fingerprint" || log_step "FAILED" "osm0sis.sh"
+else
+    FP_SCRIPT="$MODPATH/osm0sis.sh"
+    [ ! -f "$FP_SCRIPT" ] && FP_SCRIPT="$MODPATH/osm0sis.sh"
+    if [ -n "$FP_SCRIPT" ]; then
+        echo " "
+        sh "$FP_SCRIPT" && log_step "UPDATED" "Pixel Canary Imprint" || log_step "FAILED" "Fingerprint update"
+    else
+        echo " "
+        log_step "WARNING" "PLEASE RE-FLASH THE MODULE"
+    fi
+fi
+
 # Migrate
 MARGS=""
 MDESC=""
@@ -377,7 +387,6 @@ else
     log_step "SKIPPED" "migrate.sh disabled"
 fi
 
-
 # Expiry Handling
 if [ "$MIGRATE_OK" -eq 1 ] && [ -f "$BOX/remove_expiry" ]; then
     sed -i '/Released On:/d;/Estimated Expiry:/d' "$P"
@@ -385,7 +394,6 @@ if [ "$MIGRATE_OK" -eq 1 ] && [ -f "$BOX/remove_expiry" ]; then
 #else
 #    log_step "SKIPPED" "Expiry handling"
 fi
-
 
 # JSON Export
 if [ "$MIGRATE_OK" -eq 1 ] && [ -f "$BOX/json" ] && [ ! -f "$BOX/skip_json" ] && [ -f "$P" ]; then
@@ -414,9 +422,9 @@ if [ "$MIGRATE_OK" -eq 1 ] && [ -f "$BOX/json" ] && [ ! -f "$BOX/skip_json" ] &&
         echo "  }"
         echo "}"
     } > "$OUTJSON"
-    log_step "CREATED" "Dumped PIF config to $OUTJSON"
+    log_step "CREATED" "PIF.json to $OUTJSON"
 else
-    log_step "SKIPPED" "PIF config dump"
+    log_step "SKIPPED" "PIF.json dump"
 fi
 
 
@@ -467,19 +475,6 @@ mv -f "$TMP" "$TARGET" && success=1 && log_step "UPDATED" "Target Packages confi
 
 if [ ! -f "$SKIP_FILE" ] && [ "$orig_selinux" = "Enforcing" ]; then
     setenforce 1
-fi
-
-# Spoofing
-if [ -f "$FLAG" ] && [ -f "$MODPATH/osm0sis.sh" ]; then
-    sh "$MODPATH/osm0sis.sh" >/dev/null 2>&1 && log_step "UPDATED" "Advanced Fingerprint" || log_step "FAILED" "osm0sis.sh"
-else
-    FP_SCRIPT="$MODPATH/osm0sis.sh"
-    [ ! -f "$FP_SCRIPT" ] && FP_SCRIPT="$MODPATH/osm0sis.sh"
-    if [ -n "$FP_SCRIPT" ]; then
-        sh "$FP_SCRIPT" >/dev/null 2>&1 && log_step "UPDATED" "Pixel Canary Imprint" || log_step "FAILED" "Fingerprint update"
-    else
-        log_step "WARNING" "PLEASE RE-FLASH THE MODULE"
-    fi
 fi
 
 # Write security_patch.txt based on patch flag
@@ -534,7 +529,7 @@ if [ -f "/data/adb/modules/tsupport-advance/service.sh" ]; then
 fi
 echo " "
 echo " "
-echo "    ACTION COMPLETED SUCCESSFULLY"
+echo "    -- ACTION COMPLETED SUCCESSFULLY --"
 randomize_banner
 handle_delay
 exit 0
