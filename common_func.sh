@@ -105,11 +105,6 @@ pif() {
 recommended_settings() {
     touch "$BOX/migrate_force"
     touch "$BOX/run_migrate"
-    touch "$BOX/nodebug"
-    touch "$BOX/encrypt"
-    touch "$BOX/build"
-    touch "$BOX/twrp"
-    touch "$BOX/tag"
 }
 
 # Logger function
@@ -177,7 +172,7 @@ detect_downloader() {
     return
   fi
 
-  # 5. Built-in toybox wget
+  # Built-in toybox wget
   if toybox wget --help >/dev/null 2>&1; then
     DOWNLOADER="toybox"
     DL_MODE="toybox"
@@ -373,17 +368,15 @@ megatron() {
 # Print header
 print_header() {
   echo "
-    ____      __                  _ __       
-   /  _/___  / /____  ____ ______(_) /___  __
-   / // __ \/ __/ _ \/ __ / ___/ / __/  / / /
- _/ // / / / /_/  __/ /_/ / /  / / /_/ /_/ / 
-/___/_/ /_/\__/\___/\__, /_/  /_/\__/\__, /  
-                   /____/           /____/           
-             ____            
-            / __ )____  _  __
-           / __  / __ \| |/_/
-          / /_/ / /_/ />  <  
-         /_____/\____/_/|_|  
+  ___     _                _ _        
+ |_ _|_ _| |_ ___ __ _ _ _(_) |_ _  _ 
+  | || ' \  _/ -_) _  | '_| |  _| || |
+ |___|_||_\__\___\__, |_| |_|\__|\_, |
+ | _ ) _____ __  |___/           |__/ 
+ | _ \/ _ \ \ /                       
+ |___/\___/_\_\                       
+                                                
+                                             
                     
 "
 }
