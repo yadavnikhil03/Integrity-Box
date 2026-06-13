@@ -23,17 +23,19 @@ fi
 
 # Handle GMS-specific props
 if [ -f "/data/adb/Box-Brain/enablegms" ]; then
-    set_resetprop persist.sys.pihooks.disable.gms_key_attestation_block false
-    set_resetprop persist.sys.pihooks.disable.gms_props false
-    set_simpleprop persist.sys.pihooks.disable 0
-    set_simpleprop persist.sys.kihooks.disable 0
+    setprop persist.sys.pihooks.disable.gms_key_attestation_block false
+    setprop persist.sys.pihooks.disable.gms_props false
+    setprop persist.sys.pihooks.enabled_features 1
+    setprop persist.sys.pihooks.disable 0
+    setprop persist.sys.kihooks.disable 0
 fi
 
 if [ -f "/data/adb/Box-Brain/disablegms" ]; then
-    set_resetprop persist.sys.pihooks.disable.gms_key_attestation_block true
-    set_resetprop persist.sys.pihooks.disable.gms_props true
-    set_simpleprop persist.sys.pihooks.disable 1
-    set_simpleprop persist.sys.kihooks.disable 1
+    setprop persist.sys.pihooks.disable.gms_key_attestation_block true
+    setprop persist.sys.pihooks.disable.gms_props true
+    setprop persist.sys.pihooks.enabled_features 0
+    setprop persist.sys.pihooks.disable 1
+    setprop persist.sys.kihooks.disable 1
 fi
 
 cat <<'EOF' > "$boot/.box_cleanup.sh"
@@ -89,6 +91,12 @@ MODULE2="/data/adb/modules/tsupport-advance"
 MODULE3="/data/adb/modules/Yurikey"
 MODULE4="/data/adb/modules/tricky_store/webroot"
 
+# Paths
+IGNORE_FLAG="/data/adb/Box-Brain/ignore"
+TARGET_FILE="/data/adb/tricky_store/target.txt"
+SCRIPT="/data/adb/modules/playintegrityfix/webroot/common_scripts/target.sh"
+LOG_FILE="/data/adb/Box-Brain/Integrity-Box-Logs/target.log"
+
 if [ ! -d "$MODULE1" ] && [ ! -d "$MODULE2" ] && [ ! -d "$MODULE3" ] && [ ! -d "$MODULE4" ]; then
     exit 0
 fi
@@ -98,12 +106,6 @@ if [ -f "$IGNORE_FLAG" ]; then
     log "Ignore flag found, exiting"
     exit 0
 fi
-
-# Paths
-IGNORE_FLAG="/data/adb/Box-Brain/ignore"
-TARGET_FILE="/data/adb/tricky_store/target.txt"
-SCRIPT="/data/adb/modules/playintegrityfix/webroot/common_scripts/target.sh"
-LOG_FILE="/data/adb/Box-Brain/Integrity-Box-Logs/target.log"
 
 # Create log directory if needed
 mkdir -p "$(dirname "$LOG_FILE")"
@@ -374,13 +376,13 @@ exit 0
 EOF
 fi
 
-if [ ! -f "$placeholder/may" ]; then
-touch "$placeholder/may"
+if [ ! -f "$placeholder/june" ]; then
+touch "$placeholder/june"
 cat <<'EOF' > "$boot/prop.sh"
 #!/system/bin/sh
 
 # CONFIG
-PATCH_DATE="2026-05-01"
+PATCH_DATE="2026-06-01"
 FILE_PATH="/data/adb/tricky_store/security_patch.txt"
 SKIP_FILE="/data/adb/Box-Brain/skip"
 LOG_DIR="/data/adb/Box-Brain/Integrity-Box-Logs"
@@ -464,72 +466,8 @@ exit 0
 EOF
 fi
 
-##########################################
-# adapted from Shamiko (service.sh) by @LSPosed
-# source: https://github.com/LSPosed/LSPosed.github.io/releases
-##########################################
-
-if [ ! -f "/data/adb/modules/zygisk_shamiko/module.prop" ]; then
-   cat <<'EOF' > "$boot/shamiko.sh"
-#!/system/bin/sh
-
-# Exit if module is disabled 
-if [ -f "/data/adb/modules/playintegrityfix/disable" ]; then
-    echo "Integrity Box is disabled, exiting..."
-    exit 0
-fi
-
-check_reset_prop() {
-  local NAME=$1
-  local EXPECTED=$2
-  local VALUE=$(resetprop $NAME)
-  [ -z $VALUE ] || [ $VALUE = $EXPECTED ] || resetprop -n $NAME $EXPECTED
-}
-
-contains_reset_prop() {
-  local NAME=$1
-  local CONTAINS=$2
-  local NEWVAL=$3
-  [[ "$(resetprop $NAME)" = *"$CONTAINS"* ]] && resetprop -n $NAME $NEWVAL
-}
-
-resetprop -w sys.boot_completed 0
-
-check_reset_prop "ro.boot.vbmeta.device_state" "locked"
-check_reset_prop "ro.boot.verifiedbootstate" "green"
-check_reset_prop "ro.boot.flash.locked" "1"
-check_reset_prop "ro.boot.veritymode" "enforcing"
-check_reset_prop "ro.boot.warranty_bit" "0"
-check_reset_prop "ro.warranty_bit" "0"
-check_reset_prop "ro.debuggable" "0"
-check_reset_prop "ro.force.debuggable" "0"
-check_reset_prop "ro.secure" "1"
-check_reset_prop "ro.adb.secure" "1"
-check_reset_prop "ro.build.type" "user"
-check_reset_prop "ro.build.tags" "release-keys"
-check_reset_prop "ro.vendor.boot.warranty_bit" "0"
-check_reset_prop "ro.vendor.warranty_bit" "0"
-check_reset_prop "vendor.boot.vbmeta.device_state" "locked"
-check_reset_prop "vendor.boot.verifiedbootstate" "green"
-check_reset_prop "sys.oem_unlock_allowed" "0"
-
-# MIUI specific
-check_reset_prop "ro.secureboot.lockstate" "locked"
-
-# Realme specific
-check_reset_prop "ro.boot.realmebootstate" "green"
-check_reset_prop "ro.boot.realme.lockstate" "1"
-
-# Hide that we booted from recovery when magisk is in recovery mode
-contains_reset_prop "ro.bootmode" "recovery" "unknown"
-contains_reset_prop "ro.boot.bootmode" "recovery" "unknown"
-contains_reset_prop "vendor.boot.bootmode" "recovery" "unknown"
-EOF
-fi
-
 # Verify backend perms
 for _f in \
-    "$boot/shamiko.sh" \
     "$boot/prop.sh" \
     "$boot/hash.sh" \
     "$boot/lineage.sh" \
